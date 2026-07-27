@@ -1,7 +1,7 @@
 
 Lineup PPG Calculator
 
-A fantasy football tool for ranking your own players and instantly seeing the projected points and value of any lineup you build — no login, no backend, nothing to install. Open the page and go.
+A fantasy football tool for ranking your own players and instantly seeing the historical scoring pace and value of any lineup you build — no login, no backend, nothing to install. Open the page and go.
 
 [Open The App](https://zoltun456.github.io/Lineup-PPG-Calculator/)
 
@@ -29,7 +29,7 @@ Toggle between the two anytime with the switch at the top of the Lineup tab. Slo
 
 Every slot shows:
 
-PPG — projected points per game, based on 5-year scoring averages by position and rank
+PPG — points per game, based on 5-year historical scoring averages for whatever finish rank a player occupies (e.g. the RB1 number reflects how RB1 finishes have actually scored, on average, over the last 5 years — not a projection of what any specific player will do this season)
 VOR (value over replacement) — how much better that player is than a "replacement level" player at the same position, given your current roster construction
 
 VOR isn't a fixed number — it recalculates live. Every QB/RB/WR/TE slot in your lineup raises that position's replacement baseline by 12 ranks; every FLEX slot raises both RB's and WR's baselines by 6. Add a second FLEX spot, and the RB/WR bar for "replacement level" moves accordingly, and every VOR number updates instantly.
@@ -46,6 +46,14 @@ Two buttons at the bottom of the Rankings tab give you extra control over that d
 
 Export data — downloads everything (rankings, pool, lineup) as a .json file, useful as a backup or for moving your setup to a different browser or device
 Import data — loads a previously exported file back in
+How to actually use this
+
+This tool is meant to help you visualize your own preferences and opinions about players — not replace them.
+
+Say you're stuck deciding between your RB8 and your WR11 for a flex spot. Plug both into a lineup and see how they stack up historically. That's the use case this is built for: turning a gut-level "I like this guy more" into a quick, concrete comparison based on how players at that rank have actually scored over time.
+
+What it isn't is a decision-maker. PPG and VOR here reflect historical scoring by finish rank, not a forecast of what your specific players will do this season — matchups, injuries, coaching changes, and a dozen other things this tool has no idea about will all matter more than a 5-year average. Treat the numbers as a sanity check on your own rankings, not a verdict. You already know things about these players that a spreadsheet doesn't.
+
 Getting started
 Open the app.
 Go to the Rankings tab and start ranking players at each position — click or drag them out of the pool.
