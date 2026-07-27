@@ -103,6 +103,11 @@
   }
   .card-head{
     padding:18px 20px 4px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    flex-wrap:wrap;
   }
   .card-head h2{
     font-family:'Barlow Condensed',sans-serif;
@@ -116,6 +121,27 @@
     font-size:13px;
     color:var(--ink-soft);
     margin:0 0 12px;
+  }
+
+  .mode-toggle{
+    display:flex;
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+    flex-shrink:0;
+  }
+  .mode-toggle button{
+    border:none;
+    background:var(--card);
+    padding:8px 12px;
+    font-size:12px;
+    font-family:'Inter',sans-serif;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .mode-toggle button.active{
+    background:var(--field);
+    color:#fff;
   }
 
   .rank-grid{
@@ -187,11 +213,13 @@
     font-size:12px;
     color:var(--ink-soft);
     border-top:1px solid var(--line);
+    text-align:center;
+    padding:8px;
   }
   .rank-list.drag-over{ background:var(--paper); }
 
   .pool-list{
-    max-height:160px;
+    max-height:220px;
     overflow-y:auto;
     border-top:1px solid var(--line);
   }
@@ -232,27 +260,6 @@
     padding:6px 10px;
     font-size:13px;
     white-space:nowrap;
-  }
-  .bulk-add{
-    padding:0 10px 10px;
-  }
-  .bulk-add textarea{
-    width:100%;
-    font-family:'Inter',sans-serif;
-    font-size:12px;
-    padding:6px 8px;
-    border-radius:8px;
-    border:1px solid var(--line);
-    background:var(--paper);
-    color:var(--ink);
-    resize:vertical;
-    min-height:44px;
-  }
-  .bulk-add button{
-    margin-top:6px;
-    width:100%;
-    font-size:12px;
-    padding:6px;
   }
 
   .data-actions{
@@ -330,7 +337,13 @@
   select.pos[data-pos="RB"]{ color:var(--rb); border-color:var(--rb); background:var(--rb-bg); font-weight:500; }
   select.pos[data-pos="WR"]{ color:var(--wr); border-color:var(--wr); background:var(--wr-bg); font-weight:500; }
   select.pos[data-pos="TE"]{ color:var(--te); border-color:var(--te); background:var(--te-bg); font-weight:500; }
-  select.player:disabled{ color:var(--ink-soft); }
+  select.pos[data-pos="FLEX"]{ color:var(--gold-dark); border-color:var(--gold-dark); background:#FBF2DE; font-weight:500; }
+  input.player:disabled{ color:var(--ink-soft); background:var(--paper); }
+  #rows.mode-player .rank-cell{ display:none; }
+  #rows.mode-rank .player{ display:none; }
+  .rank-cell{ display:flex; gap:4px; }
+  .flexPos{ display:none; width:58px; flex:0 0 auto; padding:8px 4px; font-size:12px; }
+  .rank-cell .rankNum{ flex:1; min-width:0; }
   .ppg{
     font-family:'IBM Plex Mono',monospace;
     font-size:16px;
@@ -427,8 +440,10 @@
   <div class="tab-panel active" id="panel-rankings">
     <div class="card">
       <div class="card-head">
-        <h2>Your rankings</h2>
-        <p>Paste or add players into the pool, then click or drag them into your ranked order.</p>
+        <div>
+          <h2>Your rankings</h2>
+          <p>Click or drag a pool player into your ranked order.</p>
+        </div>
       </div>
       <div class="rank-grid" id="rankGrid">
         <div class="rank-col" data-pos="QB">
@@ -438,12 +453,8 @@
           <div class="subhead">Pool &mdash; click or drag to rank</div>
           <div class="pool-list" id="pool-list-QB"></div>
           <div class="rank-add">
-            <input type="text" id="add-input-QB" placeholder="Add one player" />
+            <input type="text" id="add-input-QB" placeholder="Add a player" />
             <button id="add-QB">Add</button>
-          </div>
-          <div class="bulk-add">
-            <textarea id="bulk-input-QB" placeholder="Paste a list, one player per line"></textarea>
-            <button id="bulk-QB">Add all to pool</button>
           </div>
         </div>
         <div class="rank-col" data-pos="RB">
@@ -453,12 +464,8 @@
           <div class="subhead">Pool &mdash; click or drag to rank</div>
           <div class="pool-list" id="pool-list-RB"></div>
           <div class="rank-add">
-            <input type="text" id="add-input-RB" placeholder="Add one player" />
+            <input type="text" id="add-input-RB" placeholder="Add a player" />
             <button id="add-RB">Add</button>
-          </div>
-          <div class="bulk-add">
-            <textarea id="bulk-input-RB" placeholder="Paste a list, one player per line"></textarea>
-            <button id="bulk-RB">Add all to pool</button>
           </div>
         </div>
         <div class="rank-col" data-pos="WR">
@@ -468,12 +475,8 @@
           <div class="subhead">Pool &mdash; click or drag to rank</div>
           <div class="pool-list" id="pool-list-WR"></div>
           <div class="rank-add">
-            <input type="text" id="add-input-WR" placeholder="Add one player" />
+            <input type="text" id="add-input-WR" placeholder="Add a player" />
             <button id="add-WR">Add</button>
-          </div>
-          <div class="bulk-add">
-            <textarea id="bulk-input-WR" placeholder="Paste a list, one player per line"></textarea>
-            <button id="bulk-WR">Add all to pool</button>
           </div>
         </div>
         <div class="rank-col" data-pos="TE">
@@ -483,12 +486,8 @@
           <div class="subhead">Pool &mdash; click or drag to rank</div>
           <div class="pool-list" id="pool-list-TE"></div>
           <div class="rank-add">
-            <input type="text" id="add-input-TE" placeholder="Add one player" />
+            <input type="text" id="add-input-TE" placeholder="Add a player" />
             <button id="add-TE">Add</button>
-          </div>
-          <div class="bulk-add">
-            <textarea id="bulk-input-TE" placeholder="Paste a list, one player per line"></textarea>
-            <button id="bulk-TE">Add all to pool</button>
           </div>
         </div>
       </div>
@@ -504,18 +503,24 @@
   <div class="tab-panel" id="panel-lineup">
     <div class="card">
       <div class="card-head">
-        <h2>Lineup</h2>
-        <p>Pick a position and player for each slot.</p>
+        <div>
+          <h2>Lineup</h2>
+          <p>Pick a position, then a player or a rank number.</p>
+        </div>
+        <div class="mode-toggle" id="modeToggle">
+          <button data-mode="player" class="active">By player</button>
+          <button data-mode="rank">By rank</button>
+        </div>
       </div>
       <div class="col-heads">
         <span></span>
         <span>Position</span>
-        <span>Player</span>
+        <span id="colHeadPlayer">Player</span>
         <span style="text-align:right;">PPG</span>
         <span style="text-align:right;">VOR</span>
         <span></span>
       </div>
-      <div id="rows"></div>
+      <div id="rows" class="mode-player"></div>
       <div class="add-row"><button id="addRow">+ Add slot</button></div>
       <div class="total-bar">
         <div>
@@ -542,41 +547,69 @@ RB: [23.5,21.4,20.1,19.2,18.5,17.5,17.1,16.8,16.4,16.0,15.7,15.5,15.2,15.1,14.8,
 TE: [17.1,14.9,14.3,13.7,12.6,12.2,11.6,10.9,10.6,10.4,10.2,9.8,9.7,9.6,9.3,9.1,8.8,8.5,8.3,8.0,7.9,7.8,7.5,7.4]
 };
 
-const vorData = {
-QB: [5.8,4.2,4.0,3.1,2.7,2.0,1.6,1.0,0.9,0.5,0.3,0.0,-0.5,-0.7,-1.1,-1.5,-2.0,-2.1,-2.4,-2.5,-2.6,-2.9,-3.2,-3.4,-3.5,-3.8,-3.9,-4.2,-4.5,-4.7,-4.9,-7.7],
-WR: [10.8,8.5,7.2,6.6,6.0,5.0,4.4,4.2,3.8,3.5,3.3,2.9,2.6,2.4,2.2,2.1,1.8,1.6,1.5,1.1,1.0,0.9,0.7,0.5,0.5,0.4,0.4,0.3,0.1,0.0,-0.3,-0.5,-0.8,-0.9,-1.0,-1.2,-1.3,-1.4,-1.6,-1.7,-1.8,-1.9,-2.1,-2.2,-2.4,-2.6,-2.8,-2.9,-3.0,-3.1],
-RB: [12.0,10.0,8.7,7.8,7.1,6.1,5.7,5.3,5.0,4.6,4.3,4.0,3.8,3.6,3.4,3.3,3.0,2.7,2.4,2.1,1.7,1.5,1.2,0.9,0.7,0.6,0.4,0.2,0.1,0.0,-0.2,-0.3,-0.5,-0.8,-1.0,-1.3,-1.5,-1.6,-1.8,-2.0,-2.3,-2.5,-2.8,-2.9,-3.0,-3.1,-3.3,-3.7,-3.9,-4.1],
-TE: [7.2,5.1,4.4,3.9,2.8,2.3,1.8,1.0,0.7,0.5,0.3,0.0,-0.1,-0.2,-0.5,-0.7,-1.0,-1.4,-1.6,-1.9,-2.0,-2.0,-2.3,-2.5]
+const BASELINE_WEIGHT = { QB:12, RB:12, WR:12, TE:12, FLEX_RB:6, FLEX_WR:6 };
+
+const DEFAULT_POOL = {
+QB: ["Josh Allen","Drake Maye","Joe Burrow","Lamar Jackson","Dak Prescott","Justin Herbert","Jayden Daniels","Caleb Williams","Trevor Lawrence","Brock Purdy","Jalen Hurts","Jared Goff","Matthew Stafford","Bo Nix","Jaxson Dart","Jordan Love","Patrick Mahomes","Baker Mayfield","Sam Darnold","Kyler Murray","Tyler Shough","Malik Willis","C.J. Stroud","Daniel Jones","Cam Ward","Bryce Young","Geno Smith","Fernando Mendoza","Aaron Rodgers","Jacoby Brissett","Tua Tagovailoa","Michael Penix Jr.","Deshaun Watson","Shedeur Sanders","Carson Beck","Kirk Cousins","Anthony Richardson"],
+RB: ["Bijan Robinson","Jahmyr Gibbs","Christian McCaffrey","Jonathan Taylor","James Cook","Ashton Jeanty","Chase Brown","De'Von Achane","Derrick Henry","Saquon Barkley","Omarion Hampton","Jeremiyah Love","Kenneth Walker III","Breece Hall","Kyren Williams","Travis Etienne","Javonte Williams","Cam Skattebo","Josh Jacobs","D'Andre Swift","Bucky Irving","Quinshon Judkins","David Montgomery","TreVeyon Henderson","Bhayshul Tuten","Jaylen Warren","Jadarian Price","Chuba Hubbard","Rhamondre Stevenson","JK Dobbins","Tony Pollard","Rico Dowdle","Kyle Monangai","Jordan Mason","Kenny Gainwell","Aaron Jones","RJ Harvey","Blake Corum","Chris Rodriguez","Jacory Croskey-Merritt","Rachaad White","Tyjae Spears","Tyrone Tracy","Keaton Mitchell","Dylan Sampson","Woody Marks","Tyler Allgeier","Brian Robinson","Zach Charbonnet","Emmett Johnson","Nick Singleton","Mike Washington","Chris Brooks","James Conner","Jordan James","Jonah Coleman","Ray Davis","Samaje Perine","Tank Bigsby","Emanuel Wilson","LeQuint Allen","Ty Johnson","Justice Hill","Braelon Allen","Isiah Pacheco","Sean Tucker","Najee Harris","Marshawn Lloyd","Alvin Kamara","Kaytron Allen"],
+WR: ["Puka Nacua","Ja'Marr Chase","Jaxon Smith-Njigba","Amon-Ra St. Brown","CeeDee Lamb","Justin Jefferson","Drake London","Nico Collins","George Pickens","A.J. Brown","Chris Olave","Rashee Rice","Garrett Wilson","Zay Flowers","Emeka Egbuka","Malik Nabers","DeVonta Smith","Terry McLaurin","Tetairoa McMillan","Tee Higgins","Ladd McConkey","Jameson Williams","Mike Evans","Luther Burden III","Jaylen Waddle","Brian Thomas Jr.","Parker Washington","Carnell Tate","Christian Watson","Davante Adams","Rome Odunze","Alec Pierce","DK Metcalf","DJ Moore","Jordyn Tyson","Marvin Harrison Jr.","Chris Godwin","Stefon Diggs","Jakobi Meyers","Makai Lemon","Jordan Addison","Ricky Pearsall","Michael Pittman Jr.","Courtland Sutton","Romeo Doubs","Khalil Shakir","Michael Wilson","Jayden Reed","Josh Downs","Quentin Johnston","Jayden Higgins","Jalen Coker","Xavier Worthy","Wan'Dale Robinson","Matthew Golden","KC Concepcion","Jalen Nailor","Denzel Boston","Rashid Shaheed","Jalen McMillan","Brandon Aiyuk","Omar Cooper","Deebo Samuel","Ryan Flournoy","Jauan Jennings","Jerry Jeudy","De'Zhaun Stribling","Tre Harris","Tre Tucker","Malik Washington","Germie Bernard"],
+TE: ["Brock Bowers","Trey McBride","Colston Loveland","Tyler Warren","Sam LaPorta","Harold Fannin Jr.","Tucker Kraft","Kyle Pitts","George Kittle","Travis Kelce","Jake Ferguson","Dalton Kincaid","Mark Andrews","Brenton Strange","Isaiah Likely","Oronde Gadsden II","Hunter Henry","Chig Okonkwo","AJ Barner","Dallas Goedert","Kenyon Sadiq","Juwan Johnson","Dalton Schultz","TJ Hockenson","Pat Freiermuth","Cade Otton","Gunnar Helm","Greg Dulcich","Mike Gesicki","Darnell Washington","Darren Waller","Colby Parkinson","Eli Stowers","Terrance Ferguson","Mason Taylor","Theo Johnson"]
 };
 
 const POSITIONS = ["QB","RB","WR","TE"];
-const RANK_KEY = "ffRankings";
-const POOL_KEY = "ffPool";
-const SLOT_KEY = "ffSlots";
+const RANK_KEY = "lineupPpgCalc_rankings_v1";
+const POOL_KEY = "lineupPpgCalc_pool_v1";
+const SLOT_KEY = "lineupPpgCalc_slots_v1";
+const MODE_KEY = "lineupPpgCalc_mode_v1";
+
+(function migrateOldKeys(){
+  const oldToNew = { ffRankings: RANK_KEY, ffPool: POOL_KEY, ffSlots: SLOT_KEY, ffMode: MODE_KEY };
+  try{
+    Object.keys(oldToNew).forEach(oldKey => {
+      const newKey = oldToNew[oldKey];
+      if(localStorage.getItem(newKey) === null && localStorage.getItem(oldKey) !== null){
+        localStorage.setItem(newKey, localStorage.getItem(oldKey));
+      }
+    });
+  }catch(e){}
+})();
 
 let rankings = loadJSON(RANK_KEY) || {QB:[], RB:[], WR:[], TE:[]};
-let pool = loadJSON(POOL_KEY) || {QB:[], RB:[], WR:[], TE:[]};
+POSITIONS.forEach(p => { if(!Array.isArray(rankings[p])) rankings[p] = []; });
+let storedPool = loadJSON(POOL_KEY);
+const storedPoolEmpty = !storedPool || POSITIONS.every(p => !Array.isArray(storedPool[p]) || storedPool[p].length === 0);
+const rankingsEmpty = POSITIONS.every(p => rankings[p].length === 0);
+let pool = (storedPoolEmpty && rankingsEmpty) ? JSON.parse(JSON.stringify(DEFAULT_POOL)) : (storedPool || {QB:[], RB:[], WR:[], TE:[]});
+POSITIONS.forEach(p => { if(!Array.isArray(pool[p])) pool[p] = []; });
+let backfilled = false;
 POSITIONS.forEach(p => {
-  if(!Array.isArray(rankings[p])) rankings[p] = [];
-  if(!Array.isArray(pool[p])) pool[p] = [];
+  (DEFAULT_POOL[p] || []).forEach(name => {
+    if(!pool[p].includes(name) && !rankings[p].includes(name)){
+      pool[p].push(name);
+      backfilled = true;
+    }
+  });
 });
+if(backfilled) savePool();
 
 const defaultSlots = [
-  {pos:"QB", player:null},
-  {pos:"RB", player:null},
-  {pos:"RB", player:null},
-  {pos:"WR", player:null},
-  {pos:"WR", player:null},
-  {pos:"TE", player:null},
-  {pos:"WR", player:null}
+  {pos:"QB", player:null, rank:null, flexPos:null},
+  {pos:"RB", player:null, rank:null, flexPos:null},
+  {pos:"RB", player:null, rank:null, flexPos:null},
+  {pos:"WR", player:null, rank:null, flexPos:null},
+  {pos:"WR", player:null, rank:null, flexPos:null},
+  {pos:"TE", player:null, rank:null, flexPos:null},
+  {pos:"FLEX", player:null, rank:null, flexPos:"RB"}
 ];
 let savedSlots = loadJSON(SLOT_KEY) || defaultSlots;
+let lineupMode = loadJSON(MODE_KEY) || "player";
 
 const rowsEl = document.getElementById("rows");
 const totalEl = document.getElementById("total");
 const totalVorEl = document.getElementById("totalVor");
 let draggedRow = null;
 let dragItem = null;
+let rowIdCounter = 0;
 
 function loadJSON(key){
   try{
@@ -592,7 +625,9 @@ function savePool(){ saveJSON(POOL_KEY, pool); }
 function saveSlots(){
   const slots = Array.from(document.querySelectorAll(".row")).map(row => ({
     pos: row.querySelector(".pos").value,
-    player: row.querySelector(".player").value || null
+    player: row.querySelector(".player").value || null,
+    rank: row.querySelector(".rankNum").value || null,
+    flexPos: row.querySelector(".flexPos").value || null
   }));
   saveJSON(SLOT_KEY, slots);
 }
@@ -605,52 +640,98 @@ function ppgFor(pos, rank){
   if(!arr || !rank || rank < 1 || rank > arr.length) return null;
   return arr[rank-1];
 }
-function vorFor(pos, rank){
-  const arr = vorData[pos];
-  if(!arr || !rank || rank < 1 || rank > arr.length) return null;
-  return arr[rank-1];
-}
 function rankOf(pos, player){
   if(!player) return null;
   const idx = rankings[pos].indexOf(player);
   return idx === -1 ? null : idx + 1;
 }
-
-function populatePlayerSelect(selectEl, pos, selectedName){
-  const arr = rankings[pos] || [];
-  if(arr.length === 0){
-    selectEl.innerHTML = '<option value="">Add players in Rankings</option>';
-    selectEl.disabled = true;
-    return;
-  }
-  selectEl.disabled = false;
-  selectEl.innerHTML = '<option value="">Select player</option>' +
-    arr.map((name,i) => `<option value="${escapeHtml(name)}">${i+1}. ${escapeHtml(name)}</option>`).join('');
-  if(selectedName && arr.includes(selectedName)) selectEl.value = selectedName;
+function resolveFlexPlayer(name){
+  if(!name) return null;
+  if(rankings.RB.includes(name)) return {pos:"RB", rank: rankings.RB.indexOf(name)+1};
+  if(rankings.WR.includes(name)) return {pos:"WR", rank: rankings.WR.indexOf(name)+1};
+  return null;
 }
-
-function refreshAllPlayerSelects(){
+function computeBaselines(){
+  const counts = {QB:0, RB:0, WR:0, TE:0, FLEX:0};
   document.querySelectorAll(".row").forEach(row => {
     const pos = row.querySelector(".pos").value;
-    const sel = row.querySelector(".player");
-    const current = sel.value;
-    populatePlayerSelect(sel, pos, current);
+    if(counts[pos] !== undefined) counts[pos]++;
+  });
+  return {
+    QB: counts.QB * BASELINE_WEIGHT.QB,
+    RB: counts.RB * BASELINE_WEIGHT.RB + counts.FLEX * BASELINE_WEIGHT.FLEX_RB,
+    WR: counts.WR * BASELINE_WEIGHT.WR + counts.FLEX * BASELINE_WEIGHT.FLEX_WR,
+    TE: counts.TE * BASELINE_WEIGHT.TE
+  };
+}
+function resolveRowPosRank(row){
+  const selectedPos = row.querySelector(".pos").value;
+  if(selectedPos !== "FLEX"){
+    let rank;
+    if(lineupMode === "player"){
+      rank = rankOf(selectedPos, row.querySelector(".player").value);
+    } else {
+      rank = parseInt(row.querySelector(".rankNum").value, 10);
+    }
+    return {pos:selectedPos, rank};
+  }
+  if(lineupMode === "player"){
+    const resolved = resolveFlexPlayer(row.querySelector(".player").value);
+    return resolved || {pos:null, rank:null};
+  }
+  const flexPos = row.querySelector(".flexPos").value;
+  const rank = parseInt(row.querySelector(".rankNum").value, 10);
+  return {pos:flexPos, rank};
+}
+
+function populatePlayerField(row, pos, selectedName){
+  const input = row.querySelector(".player");
+  const dl = row.querySelector("datalist");
+  const arr = pos === "FLEX" ? [...rankings.RB, ...rankings.WR] : (rankings[pos] || []);
+  dl.innerHTML = arr.map(name => `<option value="${escapeHtml(name)}"></option>`).join('');
+  if(arr.length === 0){
+    input.placeholder = "Add players in Rankings";
+    input.disabled = true;
+    input.value = "";
+  } else {
+    input.placeholder = "Type a player";
+    input.disabled = false;
+    input.value = (selectedName && arr.includes(selectedName)) ? selectedName : "";
+  }
+}
+
+function refreshAllPlayerFields(){
+  document.querySelectorAll(".row").forEach(row => {
+    const pos = row.querySelector(".pos").value;
+    const current = row.querySelector(".player").value;
+    populatePlayerField(row, pos, current);
   });
   recalc();
 }
 
+function updateRowFlexUI(row){
+  const pos = row.querySelector(".pos").value;
+  row.querySelector(".pos").setAttribute("data-pos", pos);
+  const flexSel = row.querySelector(".flexPos");
+  flexSel.style.display = (pos === "FLEX" && lineupMode === "rank") ? "block" : "none";
+}
+
 function recalc(){
+  const baselines = computeBaselines();
   let sum = 0;
   let vorSum = 0;
   document.querySelectorAll(".row").forEach(row => {
-    const pos = row.querySelector(".pos").value;
-    const player = row.querySelector(".player").value;
-    const rank = rankOf(pos, player);
-    const val = ppgFor(pos, rank);
-    const vorVal = vorFor(pos, rank);
+    updateRowFlexUI(row);
+    const { pos, rank } = resolveRowPosRank(row);
+    const val = pos ? ppgFor(pos, rank) : null;
+    let vorVal = null;
+    if(pos && val !== null){
+      const baseRank = baselines[pos];
+      const baseVal = ppgFor(pos, baseRank);
+      vorVal = (baseVal !== null) ? (val - baseVal) : null;
+    }
     const ppgEl = row.querySelector(".ppg");
     const vorEl = row.querySelector(".vor");
-    row.querySelector(".pos").setAttribute("data-pos", pos);
     if(val === null){
       ppgEl.textContent = "-";
       ppgEl.classList.add("empty");
@@ -675,7 +756,8 @@ function recalc(){
   saveSlots();
 }
 
-function addRow(pos, player){
+function addRow(pos, player, rank, flexPos){
+  rowIdCounter++;
   const row = document.createElement("div");
   row.className = "row";
   row.draggable = false;
@@ -686,21 +768,35 @@ function addRow(pos, player){
       <option value="RB">RB</option>
       <option value="WR">WR</option>
       <option value="TE">TE</option>
+      <option value="FLEX">FLEX</option>
     </select>
-    <select class="player"></select>
+    <input type="text" class="player" list="dl-${rowIdCounter}" autocomplete="off" />
+    <datalist id="dl-${rowIdCounter}"></datalist>
+    <div class="rank-cell">
+      <select class="flexPos">
+        <option value="RB">RB</option>
+        <option value="WR">WR</option>
+      </select>
+      <input type="number" class="rankNum" min="1" value="${rank || ''}" placeholder="Rank" />
+    </div>
     <span class="ppg">-</span>
     <span class="vor">-</span>
     <button class="remove" aria-label="Remove slot">&times;</button>
   `;
   row.querySelector(".pos").value = pos;
+  row.querySelector(".flexPos").value = flexPos || "RB";
   rowsEl.appendChild(row);
-  populatePlayerSelect(row.querySelector(".player"), pos, player);
+  populatePlayerField(row, pos, player);
+  updateRowFlexUI(row);
 
   row.querySelector(".pos").addEventListener("change", (e) => {
-    populatePlayerSelect(row.querySelector(".player"), e.target.value, null);
+    populatePlayerField(row, e.target.value, null);
+    updateRowFlexUI(row);
     recalc();
   });
-  row.querySelector(".player").addEventListener("change", recalc);
+  row.querySelector(".player").addEventListener("input", recalc);
+  row.querySelector(".rankNum").addEventListener("input", recalc);
+  row.querySelector(".flexPos").addEventListener("change", recalc);
   row.querySelector(".remove").addEventListener("click", () => {
     row.remove();
     recalc();
@@ -754,7 +850,7 @@ function moveToRanked(pos, name, atIndex){
   saveRankings();
   renderRankings();
   renderPool();
-  refreshAllPlayerSelects();
+  refreshAllPlayerFields();
 }
 
 function renderRankings(){
@@ -825,7 +921,7 @@ function renderRankings(){
           arr.splice(toIdx, 0, dragItem.name);
           saveRankings();
           renderRankings();
-          refreshAllPlayerSelects();
+          refreshAllPlayerFields();
         } else if(dragItem.source === "pool"){
           moveToRanked(pos, dragItem.name, toIdx);
         }
@@ -833,9 +929,12 @@ function renderRankings(){
 
       item.querySelector(".remove").addEventListener("click", () => {
         rankings[pos] = rankings[pos].filter(n => n !== name);
+        if(!pool[pos].includes(name)) pool[pos].push(name);
         saveRankings();
+        savePool();
         renderRankings();
-        refreshAllPlayerSelects();
+        renderPool();
+        refreshAllPlayerFields();
       });
     });
   });
@@ -896,18 +995,6 @@ POSITIONS.forEach(pos => {
   };
   btn.addEventListener("click", addPlayer);
   input.addEventListener("keydown", (e) => { if(e.key === "Enter") addPlayer(); });
-
-  const bulkInput = document.getElementById("bulk-input-" + pos);
-  const bulkBtn = document.getElementById("bulk-" + pos);
-  bulkBtn.addEventListener("click", () => {
-    const names = bulkInput.value.split("\n").map(s => s.trim()).filter(Boolean);
-    names.forEach(name => {
-      if(!pool[pos].includes(name) && !rankings[pos].includes(name)) pool[pos].push(name);
-    });
-    bulkInput.value = "";
-    savePool();
-    renderPool();
-  });
 });
 
 document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -919,12 +1006,26 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   });
 });
 
+document.querySelectorAll("#modeToggle button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    lineupMode = btn.dataset.mode;
+    saveJSON(MODE_KEY, lineupMode);
+    document.querySelectorAll("#modeToggle button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    rowsEl.classList.toggle("mode-player", lineupMode === "player");
+    rowsEl.classList.toggle("mode-rank", lineupMode === "rank");
+    document.getElementById("colHeadPlayer").textContent = lineupMode === "player" ? "Player" : "Rank";
+    recalc();
+  });
+});
+
 document.getElementById("exportBtn").addEventListener("click", () => {
   const slots = Array.from(document.querySelectorAll(".row")).map(row => ({
     pos: row.querySelector(".pos").value,
-    player: row.querySelector(".player").value || null
+    player: row.querySelector(".player").value || null,
+    rank: row.querySelector(".rankNum").value || null
   }));
-  const blob = new Blob([JSON.stringify({ rankings, pool, slots }, null, 2)], {type:"application/json"});
+  const blob = new Blob([JSON.stringify({ rankings, pool, slots, lineupMode }, null, 2)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -957,9 +1058,9 @@ document.getElementById("importFile").addEventListener("change", (e) => {
       renderPool();
       if(parsed.slots){
         rowsEl.innerHTML = "";
-        parsed.slots.forEach(s => addRow(s.pos, s.player));
+        parsed.slots.forEach(s => addRow(s.pos, s.player, s.rank, s.flexPos));
       }
-      refreshAllPlayerSelects();
+      refreshAllPlayerFields();
     }catch(err){
       alert("That file could not be read as lineup data.");
     }
@@ -968,11 +1069,18 @@ document.getElementById("importFile").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
+rowsEl.classList.toggle("mode-player", lineupMode === "player");
+rowsEl.classList.toggle("mode-rank", lineupMode === "rank");
+document.getElementById("colHeadPlayer").textContent = lineupMode === "player" ? "Player" : "Rank";
+document.querySelectorAll("#modeToggle button").forEach(b => {
+  b.classList.toggle("active", b.dataset.mode === lineupMode);
+});
+
 renderRankings();
 renderPool();
-savedSlots.forEach(s => addRow(s.pos, s.player));
+savedSlots.forEach(s => addRow(s.pos, s.player, s.rank, s.flexPos));
 document.getElementById("addRow").addEventListener("click", () => {
-  addRow("QB", null);
+  addRow("QB", null, null);
   recalc();
 });
 recalc();
