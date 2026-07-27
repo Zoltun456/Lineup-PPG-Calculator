@@ -5,7 +5,7 @@ A fantasy football tool for ranking your own players and instantly seeing the hi
 
 [Open The App](https://zoltun456.github.io/Lineup-PPG-Calculator/)
 
-What it does
+**What it does**
 
 This is a two-part tool: a place to rank players your way, and a lineup builder that turns those rankings into live scoring.
 
@@ -36,7 +36,7 @@ VOR isn't a fixed number — it recalculates live. Every QB/RB/WR/TE slot in you
 
 Totals for both PPG and VOR are summed at the bottom, so you can compare full lineups at a glance.
 
-Your data, saved automatically
+**Your data, saved automatically**
 
 Everything you do — your rankings, your pool, your current lineup, even which mode (player/rank) you last used — saves automatically to your browser as you go. Close the tab, come back next week, and it's exactly how you left it.
 
@@ -46,7 +46,8 @@ Two buttons at the bottom of the Rankings tab give you extra control over that d
 
 Export data — downloads everything (rankings, pool, lineup) as a .json file, useful as a backup or for moving your setup to a different browser or device
 Import data — loads a previously exported file back in
-How to actually use this
+
+**How to actually use this**
 
 This tool is meant to help you visualize your own preferences and opinions about players — not replace them.
 
@@ -54,7 +55,8 @@ Say you're stuck deciding between your RB8 and your WR11 for a flex spot. Plug b
 
 What it isn't is a decision-maker. PPG and VOR here reflect historical scoring by finish rank, not a forecast of what your specific players will do this season — matchups, injuries, coaching changes, and a dozen other things this tool has no idea about will all matter more than a 5-year average. Treat the numbers as a sanity check on your own rankings, not a verdict. You already know things about these players that a spreadsheet doesn't.
 
-Getting started
+**Getting started**
+
 Open the app.
 Go to the Rankings tab and start ranking players at each position — click or drag them out of the pool.
 Switch to the Lineup tab, set your slots, and start typing in players (or ranks, if you'd rather skip ranking altogether).
