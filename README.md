@@ -1,65 +1,77 @@
+# Lineup PPG Calculator
 
-Lineup PPG Calculator
+A fantasy football tool for creating personal player rankings, building custom lineups, and comparing historical scoring value.
 
-A fantasy football tool for ranking your own players and instantly seeing the historical scoring pace and value of any lineup you build — no login, no backend, nothing to install. Open the page and go.
+No account, installation, or setup is required.
 
-[Open The App](https://zoltun456.github.io/Lineup-PPG-Calculator/)
+## [Open the Calculator](https://zoltun456.github.io/Lineup-PPG-Calculator/)
 
-**What it does**
+## Features
 
-This is a two-part tool: a place to rank players your way, and a lineup builder that turns those rankings into live scoring.
+### Create Player Rankings
 
-1. Rank your players
+Rank quarterbacks, running backs, wide receivers, and tight ends based on your own preferences.
 
-Every position (QB, RB, WR, TE) comes preloaded with a full pool of current players. Build your personal ranking by:
+* Click a player to add them to the bottom of your rankings.
+* Drag players directly into the position you want.
+* Reorder ranked players at any time.
+* Remove players to return them to the available pool.
+* Add missing players using the quick-add field.
 
-Clicking a player in the pool to send them to the bottom of your ranked list, or
-Dragging them directly into the exact spot you want
+### Build Custom Lineups
 
-Ranked players can be dragged to reorder at any time, and removing someone from your rankings sends them back to the pool instead of deleting them — nothing is ever lost. Don't see a player you're looking for? Add them by name with the quick-add box.
+Create a lineup using any combination of:
 
-2. Build a lineup and see it score
+* `QB`
+* `RB`
+* `WR`
+* `TE`
+* `FLEX`
 
-Add slots for QB, RB, WR, TE, or FLEX, then fill each one in with either:
+Slots can be added, removed, and reordered.
 
-Player mode — type a name and it autocompletes from your rankings, or
-Rank mode — just type a rank number (e.g. "RB, rank 4") if you don't want to rank every player yourself
+You can build lineups in two different ways:
 
-Toggle between the two anytime with the switch at the top of the Lineup tab. Slots can be dragged into any order, and you can add or remove as many as you want.
+* **Player Mode:** Select players from your rankings.
+* **Rank Mode:** Enter a position and rank, such as `RB, Rank 4`.
 
-Every slot shows:
+Switch between modes at any time from the Lineup tab.
 
-PPG — points per game, based on 5-year historical scoring averages for whatever finish rank a player occupies (e.g. the RB1 number reflects how RB1 finishes have actually scored, on average, over the last 5 years — not a projection of what any specific player will do this season)
-VOR (value over replacement) — how much better that player is than a "replacement level" player at the same position, given your current roster construction
+## PPG and VOR
 
-VOR isn't a fixed number — it recalculates live. Every QB/RB/WR/TE slot in your lineup raises that position's replacement baseline by 12 ranks; every FLEX slot raises both RB's and WR's baselines by 6. Add a second FLEX spot, and the RB/WR bar for "replacement level" moves accordingly, and every VOR number updates instantly.
+Each lineup slot displays two values:
 
-Totals for both PPG and VOR are summed at the bottom, so you can compare full lineups at a glance.
+* **PPG:** The average points per game scored by players who finished at that positional rank over the last five years.
+* **VOR:** Value over replacement, which estimates how much better a player is than a replacement-level option at the same position.
 
-**Your data, saved automatically**
+Replacement level adjusts automatically based on your lineup:
 
-Everything you do — your rankings, your pool, your current lineup, even which mode (player/rank) you last used — saves automatically to your browser as you go. Close the tab, come back next week, and it's exactly how you left it.
+* Each `QB`, `RB`, `WR`, or `TE` slot moves that position's replacement baseline down by 12 ranks.
+* Each `FLEX` slot moves both the `RB` and `WR` baselines down by 6 ranks.
 
-This data lives only in your own browser. It's never sent anywhere, isn't tied to an account, and isn't shared with anyone else who opens this same page — every visitor gets their own private, independent copy.
+Total PPG and VOR are shown at the bottom of the lineup.
 
-Two buttons at the bottom of the Rankings tab give you extra control over that data:
+## Automatic Saving
 
-Export data — downloads everything (rankings, pool, lineup) as a .json file, useful as a backup or for moving your setup to a different browser or device
-Import data — loads a previously exported file back in
+Your rankings, player pool, lineup, and selected mode are saved automatically in your browser.
 
-**How to actually use this**
+Your data stays on your device and is not connected to an account or sent to a server.
 
-This tool is meant to help you visualize your own preferences and opinions about players — not replace them.
+You can also:
 
-Say you're stuck deciding between your RB8 and your WR11 for a flex spot. Plug both into a lineup and see how they stack up historically. That's the use case this is built for: turning a gut-level "I like this guy more" into a quick, concrete comparison based on how players at that rank have actually scored over time.
+* **Export Data:** Download your setup as a `.json` backup file.
+* **Import Data:** Restore a previously exported file.
 
-What it isn't is a decision-maker. PPG and VOR here reflect historical scoring by finish rank, not a forecast of what your specific players will do this season — matchups, injuries, coaching changes, and a dozen other things this tool has no idea about will all matter more than a 5-year average. Treat the numbers as a sanity check on your own rankings, not a verdict. You already know things about these players that a spreadsheet doesn't.
+## Getting Started
 
-**Getting started**
+1. [Open the calculator](https://zoltun456.github.io/Lineup-PPG-Calculator/).
+2. Rank players from the Rankings tab.
+3. Open the Lineup tab and add your roster slots.
+4. Select players or enter positional ranks.
+5. Compare the updated PPG and VOR totals.
 
-Open the app.
-Go to the Rankings tab and start ranking players at each position — click or drag them out of the pool.
-Switch to the Lineup tab, set your slots, and start typing in players (or ranks, if you'd rather skip ranking altogether).
-Watch PPG and VOR update as you build.
+## Important Note
 
-No sign-up, no setup — just open it and start ranking.
+The calculator uses historical scoring averages, not season projections.
+
+It does not account for injuries, matchups, coaching changes, roster moves, or changes in player roles. Use the results as a reference when evaluating your own rankings, not as a final decision.
