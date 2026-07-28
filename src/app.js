@@ -13,11 +13,13 @@ import {
   LEGACY_KEYS,
   LEGACY_STATE_KEYS,
   loadState,
+  normalizeLeagueId,
   normalizeState,
   saveState,
   STORAGE_KEY,
   validateImport,
 } from "./state.js";
+import { computeLeaguePowerRankings, fetchLeagueRosterData } from "./sleeper.js";
 
 const MAX_UNDO_STEPS = 30;
 const elements = {
@@ -45,6 +47,14 @@ const elements = {
   settingsButton: document.querySelector("#settingsButton"),
   settingsDialog: document.querySelector("#settingsDialog"),
   settingsCloseButton: document.querySelector("#settingsCloseButton"),
+  leagueIdInput: document.querySelector("#leagueIdInput"),
+  loadLeagueButton: document.querySelector("#loadLeagueButton"),
+  leagueMessage: document.querySelector("#leagueMessage"),
+  leagueResults: document.querySelector("#leagueResults"),
+  leagueSeasonLabel: document.querySelector("#leagueSeasonLabel"),
+  leagueNameLabel: document.querySelector("#leagueNameLabel"),
+  leagueTeams: document.querySelector("#leagueTeams"),
+  leagueCaveat: document.querySelector("#leagueCaveat"),
   confirmDialog: document.querySelector("#confirmDialog"),
   dialogTitle: document.querySelector("#dialogTitle"),
   dialogMessage: document.querySelector("#dialogMessage"),
@@ -53,9 +63,12 @@ const elements = {
 
 let state = loadState(localStorage);
 let undoStack = [];
-let activeTab = ["rankings", "lineup"].includes(location.hash.slice(1))
+let activeTab = ["rankings", "lineup", "league"].includes(location.hash.slice(1))
   ? location.hash.slice(1)
   : "rankings";
+let leagueData = null;
+let leagueLoading = false;
+let leagueError = null;
 let dragPayload = null;
 let pointerDrag = null;
 let activeViewTransition = null;
@@ -227,7 +240,7 @@ function positionLabel(position) {
 }
 
 function setActiveTab(tabName, { focus = false } = {}) {
-  if (!["rankings", "lineup"].includes(tabName)) return;
+  if (!["rankings", "lineup", "league"].includes(tabName)) return;
   const changed = activeTab !== tabName;
   activeTab = tabName;
   document.querySelectorAll('[role="tab"]').forEach((tab) => {
@@ -248,6 +261,9 @@ function setActiveTab(tabName, { focus = false } = {}) {
   if (!elements.status.hidden) placeStatus(tabName);
   if (location.hash !== `#${tabName}`) {
     history.replaceState(null, "", `#${tabName}`);
+  }
+  if (tabName === "league" && state.leagueId && !leagueData && !leagueLoading && !leagueError) {
+    loadLeague();
   }
 }
 
@@ -655,10 +671,113 @@ function renderSettings() {
   }));
 }
 
+async function loadLeague() {
+  const id = normalizeLeagueId(elements.leagueIdInput.value || state.leagueId);
+  elements.leagueIdInput.value = id;
+  if (!id) {
+    leagueData = null;
+    leagueError = "Enter a Sleeper League ID.";
+    renderLeague();
+    return;
+  }
+
+  leagueLoading = true;
+  leagueError = null;
+  renderLeague();
+  try {
+    leagueData = await fetchLeagueRosterData(id);
+    if (id !== state.leagueId) {
+      commit(`Loaded Sleeper league "${leagueData.leagueName}".`, (draft) => {
+        draft.leagueId = id;
+      }, { render: false });
+    }
+  } catch (error) {
+    leagueData = null;
+    leagueError = error instanceof Error ? error.message : "Could not load that league.";
+  } finally {
+    leagueLoading = false;
+    renderLeague();
+  }
+}
+
+function renderLeague() {
+  elements.leagueIdInput.value = state.leagueId || elements.leagueIdInput.value;
+
+  if (leagueLoading) {
+    elements.leagueMessage.textContent = "Loading league from Sleeper...";
+    elements.leagueMessage.hidden = false;
+    elements.leagueResults.hidden = true;
+    return;
+  }
+
+  if (leagueError) {
+    elements.leagueMessage.textContent = leagueError;
+    elements.leagueMessage.hidden = false;
+    elements.leagueResults.hidden = true;
+    return;
+  }
+
+  if (!leagueData) {
+    elements.leagueMessage.hidden = true;
+    elements.leagueResults.hidden = true;
+    return;
+  }
+
+  elements.leagueMessage.hidden = true;
+  elements.leagueResults.hidden = false;
+
+  const ranked = computeLeaguePowerRankings(leagueData, { rankings: state.rankings, settings: state.settings });
+  const metric = state.leagueSortMetric;
+  const metricKey = metric === "ppg" ? "totalPpg" : "totalVor";
+  const sortedTeams = [...ranked.teams].sort((left, right) => right[metricKey] - left[metricKey]);
+
+  elements.leagueNameLabel.textContent = ranked.leagueName;
+  elements.leagueSeasonLabel.textContent = ranked.season ? `${ranked.season} season` : "Season";
+
+  const rows = sortedTeams.map((team, index) => {
+    const ppgIsPrimary = metric === "ppg";
+    return createElement("div", { className: "league-team-row", role: "listitem" }, [
+      createElement("span", { className: "league-team-rank", text: `#${index + 1}` }),
+      createElement("span", { className: "league-team-name", text: team.teamName }),
+      createElement("div", { className: "metric" }, [
+        createElement("span", { className: "metric-label", text: "PPG" }),
+        createElement("span", {
+          className: `metric-value${ppgIsPrimary ? "" : " is-secondary"}`,
+          text: team.totalPpg.toFixed(1),
+        }),
+      ]),
+      createElement("div", { className: "metric" }, [
+        createElement("span", { className: "metric-label", text: "VOR" }),
+        createElement("span", {
+          className: `metric-value${ppgIsPrimary ? " is-secondary" : ""}${team.totalVor < 0 ? " is-negative" : ""}`,
+          text: team.totalVor.toFixed(1),
+        }),
+      ]),
+      createElement("span", {
+        className: "league-team-note",
+        text: `${team.countedPlayers}/${team.totalPlayers} ranked`,
+      }),
+    ]);
+  });
+  elements.leagueTeams.replaceChildren(...rows);
+
+  if (ranked.unsupportedSlots.length) {
+    elements.leagueCaveat.textContent = `This league uses slot types this app doesn't model (${ranked.unsupportedSlots.join(", ")}); they're left out of the replacement-rank baseline.`;
+    elements.leagueCaveat.hidden = false;
+  } else {
+    elements.leagueCaveat.hidden = true;
+  }
+
+  document.querySelectorAll('input[name="leagueSortMetric"]').forEach((input) => {
+    input.checked = input.value === metric;
+  });
+}
+
 function renderAll() {
   renderRankings();
   renderLineup();
   renderSettings();
+  renderLeague();
   setActiveTab(activeTab);
 }
 
@@ -977,7 +1096,7 @@ document.querySelector(".tabs").addEventListener("keydown", (event) => {
 
 window.addEventListener("hashchange", () => {
   const requestedTab = location.hash.slice(1);
-  if (["rankings", "lineup"].includes(requestedTab)) setActiveTab(requestedTab);
+  if (["rankings", "lineup", "league"].includes(requestedTab)) setActiveTab(requestedTab);
 });
 
 elements.settingsButton.addEventListener("click", () => {
@@ -987,6 +1106,26 @@ elements.settingsButton.addEventListener("click", () => {
 
 elements.settingsCloseButton.addEventListener("click", () => {
   elements.settingsDialog.close();
+});
+
+elements.loadLeagueButton.addEventListener("click", () => {
+  loadLeague();
+});
+
+elements.leagueIdInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    loadLeague();
+  }
+});
+
+document.querySelectorAll('input[name="leagueSortMetric"]').forEach((input) => {
+  input.addEventListener("change", () => {
+    if (!input.checked) return;
+    commit(`Power rankings sorted by ${input.value.toUpperCase()}.`, (draft) => {
+      draft.leagueSortMetric = input.value;
+    });
+  });
 });
 
 elements.rankGrid.addEventListener("click", (event) => {

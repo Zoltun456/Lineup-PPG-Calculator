@@ -48,6 +48,16 @@
         tabindex="-1"
         data-tab="lineup"
       >Lineup</button>
+      <button
+        id="tab-league"
+        class="tab-button"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        aria-controls="panel-league"
+        tabindex="-1"
+        data-tab="league"
+      >League</button>
     </div>
   </nav>
 
@@ -146,6 +156,58 @@
           <p>Value over replacement subtracts the PPG at your calculated league-wide replacement rank from the selected rank’s PPG.</p>
         </article>
       </div>
+    </section>
+
+    <section
+      id="panel-league"
+      class="tab-panel"
+      role="tabpanel"
+      aria-labelledby="tab-league"
+      tabindex="0"
+      hidden
+    >
+      <article class="card">
+        <div class="card-heading">
+          <div>
+            <p class="section-kicker">Sleeper league</p>
+            <h2>Power rankings</h2>
+            <p>Pull a Sleeper league's rosters and score every team using your own player rankings.</p>
+          </div>
+        </div>
+
+        <div class="league-form">
+          <label class="field field-wide">
+            <span>Sleeper League ID</span>
+            <input id="leagueIdInput" type="text" inputmode="numeric" placeholder="e.g. 987654321012345678" autocomplete="off">
+            <small>Find this in your league's Sleeper URL, e.g. sleeper.com/leagues/<strong>123456789012345678</strong>.</small>
+          </label>
+          <button class="button" id="loadLeagueButton" type="button">Load league</button>
+        </div>
+
+        <p id="leagueMessage" class="league-message" role="status" aria-live="polite" hidden></p>
+
+        <div class="league-results" id="leagueResults" hidden>
+          <div class="card-heading league-results-heading">
+            <div>
+              <p class="section-kicker" id="leagueSeasonLabel">Season</p>
+              <h2 id="leagueNameLabel">League</h2>
+            </div>
+            <fieldset class="segmented-control">
+              <legend class="sr-only">Power ranking sort metric</legend>
+              <label>
+                <input type="radio" name="leagueSortMetric" value="vor" checked>
+                <span>Sort by VOR</span>
+              </label>
+              <label>
+                <input type="radio" name="leagueSortMetric" value="ppg">
+                <span>Sort by PPG</span>
+              </label>
+            </fieldset>
+          </div>
+          <div id="leagueTeams" class="league-teams" role="list" aria-label="League power rankings"></div>
+          <p id="leagueCaveat" class="league-caveat" hidden></p>
+        </div>
+      </article>
     </section>
 
   </main>

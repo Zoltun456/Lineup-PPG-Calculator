@@ -74,7 +74,15 @@ export function createDefaultState() {
       flexRbShare: 50,
       scoringFormat: DEFAULT_SCORING_FORMAT,
     },
+    leagueId: "",
+    leagueSortMetric: "vor",
   };
+}
+
+const MAX_LEAGUE_ID_LENGTH = 25;
+
+export function normalizeLeagueId(value) {
+  return typeof value === "string" ? value.trim().replace(/[^0-9]/g, "").slice(0, MAX_LEAGUE_ID_LENGTH) : "";
 }
 
 export function normalizeSlot(candidate, index = 0) {
@@ -182,6 +190,8 @@ export function normalizeState(candidate, options = {}) {
         ? input.settings.scoringFormat
         : defaults.settings.scoringFormat,
     },
+    leagueId: normalizeLeagueId(input.leagueId),
+    leagueSortMetric: input.leagueSortMetric === "ppg" ? "ppg" : "vor",
   };
 }
 
@@ -207,6 +217,12 @@ export function validateImport(candidate) {
   }
   if (candidate.lineupMode !== undefined && !["player", "rank"].includes(candidate.lineupMode)) {
     errors.push("The lineup mode must be player or rank.");
+  }
+  if (candidate.leagueId !== undefined && typeof candidate.leagueId !== "string") {
+    errors.push("The League ID must be a string.");
+  }
+  if (candidate.leagueSortMetric !== undefined && !["ppg", "vor"].includes(candidate.leagueSortMetric)) {
+    errors.push("The league sort metric must be ppg or vor.");
   }
   if (
     candidate.settings?.scoringFormat !== undefined

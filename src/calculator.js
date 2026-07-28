@@ -77,6 +77,29 @@ export function resolveSlot(slot, mode, rankings) {
   };
 }
 
+export function scoreRosterPlayers(players, rankings, ppgData, baselines) {
+  let totalPpg = 0;
+  let totalVor = 0;
+  let countedPlayers = 0;
+
+  for (const player of players) {
+    if (!POSITIONS.includes(player.position)) continue;
+    const rank = rankOf(rankings, player.position, player.name);
+    if (rank === null) continue;
+
+    const ppg = ppgFor(player.position, rank, ppgData);
+    const baseline = baselines[player.position];
+    const replacementPpg = ppgFor(player.position, baseline.effectiveRank, ppgData);
+    const vor = ppg === null || replacementPpg === null ? null : ppg - replacementPpg;
+
+    if (ppg !== null) totalPpg += ppg;
+    if (vor !== null) totalVor += vor;
+    countedPlayers += 1;
+  }
+
+  return { totalPpg, totalVor, countedPlayers, totalPlayers: players.length };
+}
+
 export function calculateLineup(
   state,
   ppgData = historicalPpgFor(state.settings?.scoringFormat),

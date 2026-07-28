@@ -192,7 +192,7 @@ select:focus-visible,
 
 .tabs [role="tablist"] {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
 
@@ -583,6 +583,7 @@ select:focus-visible,
 .lineup-row select,
 .lineup-row input,
 .field input[type="number"],
+.field input[type="text"],
 .field select {
   width: 100%;
   min-width: 0;
@@ -889,6 +890,92 @@ select:focus-visible,
   line-height: 1.55;
 }
 
+.league-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 14px;
+  padding: 2px 26px 26px;
+}
+
+.league-message {
+  margin: 0 26px 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.league-results-heading {
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.league-teams {
+  display: flex;
+  flex-direction: column;
+}
+
+.league-team-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 70px 70px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 26px;
+  border-top: 1px solid var(--line);
+}
+
+.league-team-rank {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.league-team-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.league-team-row .metric {
+  padding-top: 0;
+}
+
+.league-team-row .metric-value {
+  padding-top: 2px;
+  font-size: 0.86rem;
+}
+
+.metric-value.is-secondary {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.league-team-note {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.league-caveat {
+  margin: 14px 26px 22px;
+  padding: 12px 14px;
+  border: 1px solid #e3c875;
+  border-radius: 10px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
 .settings-grid {
   display: grid;
   gap: 14px;
@@ -1132,6 +1219,7 @@ select:focus-visible,
 .lineup-row select:hover,
 .lineup-row input:hover,
 .field input[type="number"]:hover,
+.field input[type="text"]:hover,
 .field select:hover {
   border-color: #93a3b3;
   background-color: white;
@@ -1141,6 +1229,7 @@ select:focus-visible,
 .lineup-row select:focus,
 .lineup-row input:focus,
 .field input[type="number"]:focus,
+.field input[type="text"]:focus,
 .field select:focus {
   border-color: var(--field);
   background-color: white;
@@ -1285,6 +1374,42 @@ input[type="range"] {
     text-align: center;
   }
 
+  .league-form {
+    grid-template-columns: 1fr;
+  }
+
+  .league-results-heading .segmented-control {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .league-team-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    padding: 10px 17px;
+  }
+
+  .league-team-rank {
+    flex: 0 0 auto;
+  }
+
+  .league-team-name {
+    flex: 1 1 auto;
+    min-width: 90px;
+  }
+
+  .league-team-row .metric {
+    flex: 0 0 auto;
+  }
+
+  .league-team-note {
+    flex: 1 0 100%;
+    text-align: left;
+  }
+
   .rank-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1412,6 +1537,7 @@ input[type="range"] {
   .lineup-row select,
   .lineup-row input,
   .field input[type="number"],
+  .field input[type="text"],
   .field select {
     transition:
       color var(--motion-fast) ease,
@@ -1613,6 +1739,7 @@ input[type="range"] {
   .lineup-row select:focus,
   .lineup-row input:focus,
   .field input[type="number"]:focus,
+  .field input[type="text"]:focus,
   .field select:focus {
     transform: translateY(-1px);
   }
