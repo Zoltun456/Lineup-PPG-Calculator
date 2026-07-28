@@ -1,118 +1,65 @@
-# Lineup PPG Calculator
 
-A private, browser-based fantasy football tool for turning personal player rankings into estimated lineup points per game (PPG) and value over replacement (VOR).
+Lineup PPG Calculator
 
-No account, installation, analytics, or server-side storage is required.
+A fantasy football tool for ranking your own players and instantly seeing the historical scoring pace and value of any lineup you build — no login, no backend, nothing to install. Open the page and go.
 
-## [Open the calculator](https://zoltun456.github.io/Lineup-PPG-Calculator/)
+[Open The App](https://zoltun456.github.io/Lineup-PPG-Calculator/)
 
-## What it does
+**What it does**
 
-### Build personal rankings
+This is a two-part tool: a place to rank players your way, and a lineup builder that turns those rankings into live scoring.
 
-- Add players from the QB, RB, WR, and TE pools.
-- Search large player pools.
-- Add missing players.
-- Reorder rankings with drag-and-drop or keyboard-accessible arrow buttons.
-- Return ranked players to their available pool.
-- Undo recent changes or clear every ranking.
+1. Rank your players
 
-### Model a lineup
+Every position (QB, RB, WR, TE) comes preloaded with a full pool of current players. Build your personal ranking by:
 
-Create and reorder any combination of `QB`, `RB`, `WR`, `TE`, and `FLEX` slots.
+Clicking a player in the pool to send them to the bottom of your ranked list, or
+Dragging them directly into the exact spot you want
 
-- **By player:** Select players from your personal rankings.
-- **By rank:** Enter a positional rank such as RB4.
+Ranked players can be dragged to reorder at any time, and removing someone from your rankings sends them back to the pool instead of deleting them — nothing is ever lost. Don't see a player you're looking for? Add them by name with the quick-add box.
 
-The calculator prevents a duplicate player or positional rank from inflating lineup totals. FLEX selections retain their actual RB or WR position.
+2. Build a lineup and see it score
 
-### Configure replacement value
+Add slots for QB, RB, WR, TE, or FLEX, then fill each one in with either:
 
-Replacement ranks are calculated from:
+Player mode — type a name and it autocompletes from your rankings, or
+Rank mode — just type a rank number (e.g. "RB, rank 4") if you don't want to rank every player yourself
 
-- The selected Standard, Half-PPR, or PPR scoring profile.
-- The number of teams in the league.
-- The position slots in the lineup.
-- The percentage of FLEX demand assigned to RB versus WR.
+Toggle between the two anytime with the switch at the top of the Lineup tab. Slots can be dragged into any order, and you can add or remove as many as you want.
 
-For example, the default 12-team lineup contains two RB slots and one FLEX. With an even FLEX split, the RB replacement rank is:
+Every slot shows:
 
-```text
-(2 RB + 0.5 FLEX) x 12 teams = RB30
-```
+PPG — points per game, based on 5-year historical scoring averages for whatever finish rank a player occupies (e.g. the RB1 number reflects how RB1 finishes have actually scored, on average, over the last 5 years — not a projection of what any specific player will do this season)
+VOR (value over replacement) — how much better that player is than a "replacement level" player at the same position, given your current roster construction
 
-If a calculated or entered rank exceeds the bundled data, the final available rank is used and the interface identifies that cap.
-Fractional replacement demand is rounded to the nearest whole positional rank.
+VOR isn't a fixed number — it recalculates live. Every QB/RB/WR/TE slot in your lineup raises that position's replacement baseline by 12 ranks; every FLEX slot raises both RB's and WR's baselines by 6. Add a second FLEX spot, and the RB/WR bar for "replacement level" moves accordingly, and every VOR number updates instantly.
 
-## Calculation methodology
+Totals for both PPG and VOR are summed at the bottom, so you can compare full lineups at a glance.
 
-For a selected positional rank:
+**Your data, saved automatically**
 
-```text
-PPG = historical PPG value at that positional rank
-VOR = selected-rank PPG - replacement-rank PPG
-```
+Everything you do — your rankings, your pool, your current lineup, even which mode (player/rank) you last used — saves automatically to your browser as you go. Close the tab, come back next week, and it's exactly how you left it.
 
-Total PPG and VOR include only valid, non-duplicate selections.
+This data lives only in your own browser. It's never sent anywhere, isn't tied to an account, and isn't shared with anyone else who opens this same page — every visitor gets their own private, independent copy.
 
-## Data collection and provenance
+Two buttons at the bottom of the Rankings tab give you extra control over that data:
 
-The browser does not call a live sports API. A separate, reproducible collection script downloads upstream data, validates it, and builds versioned local JSON snapshots. This keeps the deployed calculator fast and usable when an upstream provider is unavailable.
+Export data — downloads everything (rankings, pool, lineup) as a .json file, useful as a backup or for moving your setup to a different browser or device
+Import data — loads a previously exported file back in
 
-The current generated dataset uses:
+**How to actually use this**
 
-- **nflverse:** Regular-season player summary statistics for the five completed seasons from 2021 through 2025.
-- **Sleeper:** The current active fantasy player directory, stable Sleeper and GSIS IDs, teams, positions, injury status, experience, depth-chart order, and search rank.
+This tool is meant to help you visualize your own preferences and opinions about players — not replace them.
 
-[nflverse player-stat documentation](https://nflreadr.nflverse.com/reference/load_player_stats.html) · [nflverse update schedule](https://nflreadr.nflverse.com/articles/nflverse_data_schedule.html) · [Sleeper API documentation](https://docs.sleeper.com/)
+Say you're stuck deciding between your RB8 and your WR11 for a flex spot. Plug both into a lineup and see how they stack up historically. That's the use case this is built for: turning a gut-level "I like this guy more" into a quick, concrete comparison based on how players at that rank have actually scored over time.
 
-TheSportsDB is not queried because the calculator does not currently need general event, artwork, or per-player lookup data.
+What it isn't is a decision-maker. PPG and VOR here reflect historical scoring by finish rank, not a forecast of what your specific players will do this season — matchups, injuries, coaching changes, and a dozen other things this tool has no idea about will all matter more than a 5-year average. Treat the numbers as a sanity check on your own rankings, not a verdict. You already know things about these players that a spreadsheet doesn't.
 
-### Historical PPG generation
+**Getting started**
 
-For every selected season, position, and scoring format:
+Open the app.
+Go to the Rankings tab and start ranking players at each position — click or drag them out of the pool.
+Switch to the Lineup tab, set your slots, and start typing in players (or ranks, if you'd rather skip ranking altogether).
+Watch PPG and VOR update as you build.
 
-1. Filter nflverse player summaries to regular-season QB, RB, WR, and TE records with at least one game.
-2. Calculate Standard from nflverse `fantasy_points`, Half-PPR from `fantasy_points + 0.5 x receptions`, and PPR from `fantasy_points_ppr`.
-3. Rank players by regular-season total fantasy points. Resolve ties by PPG, then nflverse player ID.
-4. Divide each finisher's points by nflverse `games`.
-5. Average the PPG found at each positional finish across the five seasons.
-
-Generated depths are QB32, RB50, WR50, and TE24. The application caps higher requested ranks to the final generated rank and identifies the cap in the UI.
-
-The runtime snapshot is [`data/generated/app-data.json`](data/generated/app-data.json). Full per-season finishers, totals, games, and PPG values are retained in [`data/generated/historical-detail.json`](data/generated/historical-detail.json) for auditing.
-
-### Player-pool generation
-
-The script uses Sleeper's position-filtered endpoints and retains active QB/RB/WR/TE players who have either:
-
-- Sleeper search rank 1–500, or
-- An assigned team and depth-chart order 1–3.
-
-Existing browser rankings and custom players are preserved when a new generated player snapshot is released. The app currently stores player selections by name and position; generated stable IDs are retained for a future ID-based state migration.
-
-## Saving, backups, and privacy
-
-The app stores a versioned state object in browser `localStorage`. Data never leaves the device.
-
-- **Export backup** downloads rankings, pool, lineup slots, FLEX positions, entry mode, and league settings as JSON.
-- **Import backup** validates the entire file before replacing any state.
-- Existing version 1 and version 2 browser data is migrated automatically.
-- Malformed storage falls back safely instead of preventing the app from loading.
-- **Reset** removes both current and legacy calculator keys after confirmation.
-
-Import files are limited to 1 MB and bounded collection sizes. Imported values are validated and rendered through DOM properties rather than inserted as HTML.
-
-## Keyboard and mobile support
-
-- Use Left/Right, Home, and End on the main tabs.
-- Use the visible Up/Down controls to reorder ranked players and lineup slots.
-- All player-pool actions use native buttons and all fields have programmatic labels.
-- The ranking columns and lineup rows switch to stacked mobile layouts.
-- Drag handles pick up the complete row and support mouse, touch, and stylus input.
-- Reordering, tabs, controls, dialogs, and calculated totals use lightweight motion feedback.
-- Decorative motion is disabled automatically when the device requests reduced motion.
-
-## License
-
-See [`LICENSE`](LICENSE).
+No sign-up, no setup — just open it and start ranking.
