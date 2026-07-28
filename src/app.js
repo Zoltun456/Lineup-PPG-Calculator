@@ -69,6 +69,7 @@ let activeTab = ["rankings", "lineup", "league"].includes(location.hash.slice(1)
 let leagueData = null;
 let leagueLoading = false;
 let leagueError = null;
+const expandedLeagueTeams = new Set();
 let dragPayload = null;
 let pointerDrag = null;
 let activeViewTransition = null;
@@ -686,6 +687,7 @@ async function loadLeague() {
   renderLeague();
   try {
     leagueData = await fetchLeagueRosterData(id);
+    expandedLeagueTeams.clear();
     if (id !== state.leagueId) {
       commit(`Loaded Sleeper league "${leagueData.leagueName}".`, (draft) => {
         draft.leagueId = id;
@@ -698,6 +700,24 @@ async function loadLeague() {
     leagueLoading = false;
     renderLeague();
   }
+}
+
+function buildRosterRow(player, slotLabel) {
+  if (!player) {
+    return createElement("div", { className: "roster-player-row is-empty" }, [
+      createElement("span", { className: "roster-slot-label", text: slotLabel }),
+      createElement("span", { className: "roster-player-name is-empty-note", text: "Empty — no ranked player available" }),
+    ]);
+  }
+  const isUnranked = player.rank === null;
+  return createElement("div", { className: `roster-player-row${isUnranked ? " is-unranked" : ""}` }, [
+    createElement("span", { className: "roster-slot-label", text: slotLabel }),
+    createElement("span", { className: "roster-player-name", text: player.name }),
+    createElement("span", {
+      className: `roster-player-meta${isUnranked ? " is-unranked-badge" : ""}`,
+      text: isUnranked ? "Not ranked" : `Rank ${player.rank} · ${player.ppg.toFixed(1)} PPG`,
+    }),
+  ]);
 }
 
 function renderLeague() {
@@ -726,7 +746,10 @@ function renderLeague() {
   elements.leagueMessage.hidden = true;
   elements.leagueResults.hidden = false;
 
-  const ranked = computeLeaguePowerRankings(leagueData, { rankings: state.rankings, settings: state.settings });
+  const ranked = computeLeaguePowerRankings(leagueData, {
+    rankings: state.rankings,
+    settings: state.settings,
+  });
   const metric = state.leagueSortMetric;
   const metricKey = metric === "ppg" ? "totalPpg" : "totalVor";
   const sortedTeams = [...ranked.teams].sort((left, right) => right[metricKey] - left[metricKey]);
@@ -736,27 +759,51 @@ function renderLeague() {
 
   const rows = sortedTeams.map((team, index) => {
     const ppgIsPrimary = metric === "ppg";
-    return createElement("div", { className: "league-team-row", role: "listitem" }, [
-      createElement("span", { className: "league-team-rank", text: `#${index + 1}` }),
-      createElement("span", { className: "league-team-name", text: team.teamName }),
-      createElement("div", { className: "metric" }, [
-        createElement("span", { className: "metric-label", text: "PPG" }),
+    const benchSorted = [...team.bench].sort((left, right) => {
+      if ((left.rank === null) !== (right.rank === null)) return left.rank === null ? -1 : 1;
+      return (right.ppg ?? -Infinity) - (left.ppg ?? -Infinity);
+    });
+
+    return createElement("details", {
+      className: "league-team",
+      role: "listitem",
+      dataset: { rosterId: String(team.rosterId) },
+      open: expandedLeagueTeams.has(team.rosterId),
+    }, [
+      createElement("summary", { className: "league-team-summary" }, [
+        createElement("span", { className: "league-team-rank", text: `#${index + 1}` }),
+        createElement("span", { className: "league-team-name", text: team.teamName }),
+        createElement("div", { className: "metric" }, [
+          createElement("span", { className: "metric-label", text: "PPG" }),
+          createElement("span", {
+            className: `metric-value${ppgIsPrimary ? "" : " is-secondary"}`,
+            text: team.totalPpg.toFixed(1),
+          }),
+        ]),
+        createElement("div", { className: "metric" }, [
+          createElement("span", { className: "metric-label", text: "VOR" }),
+          createElement("span", {
+            className: `metric-value${ppgIsPrimary ? " is-secondary" : ""}${team.totalVor < 0 ? " is-negative" : ""}`,
+            text: team.totalVor.toFixed(1),
+          }),
+        ]),
         createElement("span", {
-          className: `metric-value${ppgIsPrimary ? "" : " is-secondary"}`,
-          text: team.totalPpg.toFixed(1),
+          className: "league-team-note",
+          text: `${team.filledSlots}/${team.totalSlots} starting slots filled`,
         }),
       ]),
-      createElement("div", { className: "metric" }, [
-        createElement("span", { className: "metric-label", text: "VOR" }),
-        createElement("span", {
-          className: `metric-value${ppgIsPrimary ? " is-secondary" : ""}${team.totalVor < 0 ? " is-negative" : ""}`,
-          text: team.totalVor.toFixed(1),
-        }),
+      createElement("div", { className: "league-team-roster" }, [
+        createElement("div", { className: "roster-section" }, [
+          createElement("h4", { text: "Starting lineup" }),
+          ...team.starterSlots.map((slot) => buildRosterRow(slot.player, slot.slotType)),
+        ]),
+        createElement("div", { className: "roster-section" }, [
+          createElement("h4", { text: "Bench" }),
+          ...(benchSorted.length
+            ? benchSorted.map((player) => buildRosterRow(player, player.position))
+            : [createElement("p", { className: "roster-empty-note", text: "No bench players." })]),
+        ]),
       ]),
-      createElement("span", {
-        className: "league-team-note",
-        text: `${team.countedPlayers}/${team.totalPlayers} ranked`,
-      }),
     ]);
   });
   elements.leagueTeams.replaceChildren(...rows);
@@ -1127,6 +1174,14 @@ document.querySelectorAll('input[name="leagueSortMetric"]').forEach((input) => {
     });
   });
 });
+
+elements.leagueTeams.addEventListener("toggle", (event) => {
+  const details = event.target;
+  if (!(details instanceof HTMLElement) || !details.matches(".league-team")) return;
+  const rosterId = Number(details.dataset.rosterId);
+  if (details.open) expandedLeagueTeams.add(rosterId);
+  else expandedLeagueTeams.delete(rosterId);
+}, true);
 
 elements.rankGrid.addEventListener("click", (event) => {
   const control = event.target.closest("[data-action]");

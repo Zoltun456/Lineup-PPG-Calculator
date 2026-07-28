@@ -77,27 +77,67 @@ export function resolveSlot(slot, mode, rankings) {
   };
 }
 
-export function scoreRosterPlayers(players, rankings, ppgData, baselines) {
-  let totalPpg = 0;
-  let totalVor = 0;
-  let countedPlayers = 0;
-
-  for (const player of players) {
-    if (!POSITIONS.includes(player.position)) continue;
+function evaluateRosterPlayers(players, rankings, ppgData, baselines) {
+  return players.map((player) => {
+    if (!POSITIONS.includes(player.position)) {
+      return { position: player.position, name: player.name, rank: null, ppg: null, vor: null };
+    }
     const rank = rankOf(rankings, player.position, player.name);
-    if (rank === null) continue;
-
-    const ppg = ppgFor(player.position, rank, ppgData);
+    const ppg = rank === null ? null : ppgFor(player.position, rank, ppgData);
     const baseline = baselines[player.position];
-    const replacementPpg = ppgFor(player.position, baseline.effectiveRank, ppgData);
+    const replacementPpg = baseline ? ppgFor(player.position, baseline.effectiveRank, ppgData) : null;
     const vor = ppg === null || replacementPpg === null ? null : ppg - replacementPpg;
+    return { position: player.position, name: player.name, rank, ppg, vor };
+  });
+}
 
-    if (ppg !== null) totalPpg += ppg;
-    if (vor !== null) totalVor += vor;
-    countedPlayers += 1;
+// PPG reflects only the best-scoring starting lineup; VOR sums the entire ranked roster so
+// it also credits bench depth. FLEX is filled by PPG since the starting lineup is defined as
+// whichever players would score the most, not which combination maximizes VOR.
+export function pickStartingLineup(players, rankings, ppgData, baselines, slotCounts) {
+  const evaluated = evaluateRosterPlayers(players, rankings, ppgData, baselines);
+  const playerKey = (player) => `${player.position}:${player.name}`;
+  const byPosition = Object.fromEntries(POSITIONS.map((position) => [
+    position,
+    evaluated.filter((player) => player.position === position && player.ppg !== null)
+      .sort((left, right) => right.ppg - left.ppg),
+  ]));
+
+  const usedKeys = new Set();
+  const starterSlots = [];
+
+  for (const position of POSITIONS) {
+    const count = slotCounts[position] ?? 0;
+    for (let index = 0; index < count; index += 1) {
+      const candidate = byPosition[position].find((player) => !usedKeys.has(playerKey(player)));
+      if (candidate) usedKeys.add(playerKey(candidate));
+      starterSlots.push({ slotType: position, player: candidate ?? null });
+    }
   }
 
-  return { totalPpg, totalVor, countedPlayers, totalPlayers: players.length };
+  const flexCount = slotCounts.FLEX ?? 0;
+  const flexPool = [...byPosition.RB, ...byPosition.WR]
+    .filter((player) => !usedKeys.has(playerKey(player)))
+    .sort((left, right) => right.ppg - left.ppg);
+  for (let index = 0; index < flexCount; index += 1) {
+    const candidate = flexPool[index] ?? null;
+    if (candidate) usedKeys.add(playerKey(candidate));
+    starterSlots.push({ slotType: "FLEX", player: candidate ?? null });
+  }
+
+  const bench = evaluated.filter((player) => !usedKeys.has(playerKey(player)));
+  const starters = starterSlots.map((slot) => slot.player).filter(Boolean);
+  const totalPpg = starters.reduce((sum, player) => sum + player.ppg, 0);
+  const totalVor = evaluated.reduce((sum, player) => sum + (player.vor ?? 0), 0);
+
+  return {
+    starterSlots,
+    bench,
+    totalPpg,
+    totalVor,
+    filledSlots: starters.length,
+    totalSlots: starterSlots.length,
+  };
 }
 
 export function calculateLineup(

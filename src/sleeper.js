@@ -1,4 +1,4 @@
-import { computeBaselines, scoreRosterPlayers } from "./calculator.js";
+import { computeBaselines, countLineupSlots, pickStartingLineup } from "./calculator.js";
 import { PLAYER_DIRECTORY, POSITIONS, historicalPpgFor } from "./data.js";
 import { normalizeLeagueId } from "./state.js";
 
@@ -81,11 +81,12 @@ export function computeLeaguePowerRankings(leagueData, { rankings, settings }) {
     { teams: leagueData.teams.length, flexRbShare: settings.flexRbShare },
     ppgData,
   );
+  const slotCounts = countLineupSlots(syntheticSlots);
 
   const teams = leagueData.teams.map((team) => ({
     rosterId: team.rosterId,
     teamName: team.teamName,
-    ...scoreRosterPlayers(team.players, rankings, ppgData, baselines),
+    ...pickStartingLineup(team.players, rankings, ppgData, baselines, slotCounts),
   }));
 
   return {
