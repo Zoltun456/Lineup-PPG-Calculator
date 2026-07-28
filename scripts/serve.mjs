@@ -53,5 +53,5 @@ server.listen(port, host, () => {
     ...new Set(lanAddresses.map((address) => `LAN:   http://${address}:${port}`)),
   ];
 
-  process.stdout.write(`Lineup PPG Calculator\n${urls.join("\n")}\n`);
+  process.stdout.write(`Fantasy Gut Check\n${urls.join("\n")}\n`);
 });

@@ -1,5 +1,5 @@
 
-Lineup PPG Calculator
+Fantasy Gut Check
 
 A fantasy football tool for ranking your own players and instantly seeing the historical scoring pace and value of any lineup you build — no login, no backend, nothing to install. Open the page and go.
 

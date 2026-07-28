@@ -42,6 +42,9 @@ const elements = {
   datasetDetails: document.querySelector("#datasetDetails"),
   datasetLinks: document.querySelector("#datasetLinks"),
   resetButton: document.querySelector("#resetButton"),
+  settingsButton: document.querySelector("#settingsButton"),
+  settingsDialog: document.querySelector("#settingsDialog"),
+  settingsCloseButton: document.querySelector("#settingsCloseButton"),
   confirmDialog: document.querySelector("#confirmDialog"),
   dialogTitle: document.querySelector("#dialogTitle"),
   dialogMessage: document.querySelector("#dialogMessage"),
@@ -50,7 +53,7 @@ const elements = {
 
 let state = loadState(localStorage);
 let undoStack = [];
-let activeTab = ["rankings", "lineup", "settings"].includes(location.hash.slice(1))
+let activeTab = ["rankings", "lineup"].includes(location.hash.slice(1))
   ? location.hash.slice(1)
   : "rankings";
 let dragPayload = null;
@@ -153,7 +156,9 @@ function iconButton({ label, symbol, action, position, index, disabled = false, 
 }
 
 function placeStatus(tabName = activeTab) {
-  const host = document.querySelector(`#panel-${tabName} .card-heading`);
+  const host = elements.settingsDialog.open
+    ? elements.settingsDialog.querySelector(".card-heading")
+    : document.querySelector(`#panel-${tabName} .card-heading`);
   if (host && elements.status.parentElement !== host) host.append(elements.status);
 }
 
@@ -222,7 +227,7 @@ function positionLabel(position) {
 }
 
 function setActiveTab(tabName, { focus = false } = {}) {
-  if (!["rankings", "lineup", "settings"].includes(tabName)) return;
+  if (!["rankings", "lineup"].includes(tabName)) return;
   const changed = activeTab !== tabName;
   activeTab = tabName;
   document.querySelectorAll('[role="tab"]').forEach((tab) => {
@@ -511,6 +516,12 @@ function renderLineup() {
       }),
       entry,
     ]);
+    if (mode === "player" && rowResult.position && rowResult.rank) {
+      entryField.append(createElement("span", {
+        className: "entry-rank-badge",
+        text: `${rowResult.position}${rowResult.rank}`,
+      }));
+    }
 
     const ppg = rowResult.ppg === null ? "–" : rowResult.ppg.toFixed(1);
     const vor = rowResult.vor === null ? "–" : rowResult.vor.toFixed(1);
@@ -966,7 +977,16 @@ document.querySelector(".tabs").addEventListener("keydown", (event) => {
 
 window.addEventListener("hashchange", () => {
   const requestedTab = location.hash.slice(1);
-  if (["rankings", "lineup", "settings"].includes(requestedTab)) setActiveTab(requestedTab);
+  if (["rankings", "lineup"].includes(requestedTab)) setActiveTab(requestedTab);
+});
+
+elements.settingsButton.addEventListener("click", () => {
+  renderSettings();
+  elements.settingsDialog.showModal();
+});
+
+elements.settingsCloseButton.addEventListener("click", () => {
+  elements.settingsDialog.close();
 });
 
 elements.rankGrid.addEventListener("click", (event) => {
@@ -1310,6 +1330,7 @@ elements.resetButton.addEventListener("click", async () => {
   state = createDefaultState();
   persist();
   activeTab = "rankings";
+  elements.settingsDialog.close();
   renderWithMotion();
   announce("All calculator data was reset.");
 });
