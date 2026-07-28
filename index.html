@@ -1,1090 +1,240 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lineup PPG Calculator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --field:#1B4332;
-    --field-dark:#123024;
-    --gold:#D4A017;
-    --gold-dark:#8A6A0F;
-    --paper:#FAF8F3;
-    --card:#FFFFFF;
-    --ink:#1C1C1A;
-    --ink-soft:#5C5C57;
-    --line:#E4E1D8;
-    --qb:#C0554A; --qb-bg:#F7E7E5;
-    --rb:#3A7CA5; --rb-bg:#E5EEF4;
-    --wr:#4C8C4A; --wr-bg:#E8F1E7;
-    --te:#8E5AA8; --te-bg:#F0E7F4;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    background:var(--paper);
-    color:var(--ink);
-    font-family:'Inter',sans-serif;
-    min-height:100vh;
-  }
-  header{
-    background:var(--field);
-    padding:44px 24px 30px;
-    text-align:center;
-    border-bottom:6px solid var(--gold);
-  }
-  header .eyebrow{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    letter-spacing:0.18em;
-    color:var(--gold);
-    text-transform:uppercase;
-    margin:0 0 10px;
-  }
-  header h1{
-    font-family:'Barlow Condensed',sans-serif;
-    font-weight:700;
-    font-size:clamp(32px,6vw,52px);
-    letter-spacing:0.01em;
-    color:#fff;
-    margin:0;
-    text-transform:uppercase;
-  }
-  header p{
-    color:#CFE0D6;
-    font-size:14px;
-    margin:10px 0 0;
-  }
-  .tabs{
-    max-width:760px;
-    margin:0 auto;
-    padding:0 20px;
-    display:flex;
-    gap:6px;
-    margin-top:-22px;
-  }
-  .tab-btn{
-    flex:1;
-    padding:12px;
-    border:1px solid var(--line);
-    background:var(--card);
-    border-radius:12px 12px 0 0;
-    font-family:'Barlow Condensed',sans-serif;
-    font-weight:600;
-    font-size:16px;
-    letter-spacing:0.03em;
-    text-transform:uppercase;
-    color:var(--ink-soft);
-    cursor:pointer;
-    box-shadow:0 -6px 16px -12px rgba(18,48,36,0.3);
-  }
-  .tab-btn.active{
-    color:var(--field);
-    background:var(--card);
-    border-bottom:2px solid var(--field);
-  }
-  main{
-    max-width:760px;
-    margin:0 auto 60px;
-    padding:0 20px;
-  }
-  .tab-panel{ display:none; }
-  .tab-panel.active{ display:block; }
-  .card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:14px;
-    box-shadow:0 12px 28px -18px rgba(18,48,36,0.35);
-    overflow:hidden;
-    margin-bottom:24px;
-  }
-  .card-head{
-    padding:18px 20px 4px;
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:12px;
-    flex-wrap:wrap;
-  }
-  .card-head h2{
-    font-family:'Barlow Condensed',sans-serif;
-    font-weight:600;
-    font-size:20px;
-    text-transform:uppercase;
-    letter-spacing:0.02em;
-    margin:0 0 2px;
-  }
-  .card-head p{
-    font-size:13px;
-    color:var(--ink-soft);
-    margin:0 0 12px;
-  }
-
-  .mode-toggle{
-    display:flex;
-    border:1px solid var(--line);
-    border-radius:8px;
-    overflow:hidden;
-    flex-shrink:0;
-  }
-  .mode-toggle button{
-    border:none;
-    background:var(--card);
-    padding:8px 12px;
-    font-size:12px;
-    font-family:'Inter',sans-serif;
-    color:var(--ink-soft);
-    cursor:pointer;
-  }
-  .mode-toggle button.active{
-    background:var(--field);
-    color:#fff;
-  }
-
-  .rank-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));
-    gap:1px;
-    background:var(--line);
-    border-top:1px solid var(--line);
-  }
-  .rank-col{
-    background:var(--card);
-    display:flex;
-    flex-direction:column;
-  }
-  .rank-col-head{
-    padding:10px 12px;
-    font-family:'Barlow Condensed',sans-serif;
-    font-weight:600;
-    font-size:15px;
-    text-transform:uppercase;
-    letter-spacing:0.03em;
-  }
-  .rank-col[data-pos="QB"] .rank-col-head{ color:var(--qb); background:var(--qb-bg); }
-  .rank-col[data-pos="RB"] .rank-col-head{ color:var(--rb); background:var(--rb-bg); }
-  .rank-col[data-pos="WR"] .rank-col-head{ color:var(--wr); background:var(--wr-bg); }
-  .rank-col[data-pos="TE"] .rank-col-head{ color:var(--te); background:var(--te-bg); }
-
-  .subhead{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10px;
-    letter-spacing:0.08em;
-    text-transform:uppercase;
-    color:var(--ink-soft);
-    padding:8px 12px 4px;
-  }
-  .rank-list{
-    min-height:36px;
-    max-height:220px;
-    overflow-y:auto;
-  }
-  .rank-item{
-    display:grid;
-    grid-template-columns:14px 20px 1fr 22px;
-    align-items:center;
-    gap:6px;
-    padding:6px 10px;
-    border-top:1px solid var(--line);
-    font-size:13px;
-    background:var(--card);
-  }
-  .rank-item.dragging{ opacity:0.4; }
-  .rank-item.drop-above{ box-shadow:inset 0 2px 0 0 var(--field); }
-  .rank-item.drop-below{ box-shadow:inset 0 -2px 0 0 var(--field); }
-  .rank-num{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    color:var(--ink-soft);
-  }
-  .rank-name{
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
-  .rank-list.empty-drop{
-    min-height:40px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:12px;
-    color:var(--ink-soft);
-    border-top:1px solid var(--line);
-    text-align:center;
-    padding:8px;
-  }
-  .rank-list.drag-over{ background:var(--paper); }
-
-  .pool-list{
-    max-height:220px;
-    overflow-y:auto;
-    border-top:1px solid var(--line);
-  }
-  .pool-item{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    padding:6px 10px;
-    font-size:13px;
-    cursor:grab;
-    border-bottom:1px solid var(--line);
-  }
-  .pool-item:hover{ background:var(--paper); }
-  .pool-item .pool-name{
-    flex:1;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-  }
-  .pool-item .add-icon{
-    font-size:15px;
-    color:var(--ink-soft);
-  }
-  .pool-item.dragging{ opacity:0.4; }
-
-  .rank-add{
-    display:flex;
-    gap:6px;
-    padding:8px 10px;
-  }
-  .rank-add input{
-    flex:1;
-    min-width:0;
-    font-size:13px;
-    padding:6px 8px;
-  }
-  .rank-add button{
-    padding:6px 10px;
-    font-size:13px;
-    white-space:nowrap;
-  }
-
-  .data-actions{
-    display:flex;
-    gap:8px;
-    padding:12px 20px 18px;
-    border-top:1px solid var(--line);
-    align-items:center;
-    flex-wrap:wrap;
-  }
-  .data-actions button{
-    font-size:13px;
-    padding:8px 12px;
-  }
-  .save-note{
-    font-size:12px;
-    color:var(--ink-soft);
-    margin-left:auto;
-  }
-
-  .col-heads{
-    display:grid;
-    grid-template-columns:22px 1.1fr 1.5fr 0.8fr 0.8fr 40px;
-    padding:16px 18px 10px;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:11px;
-    letter-spacing:0.08em;
-    text-transform:uppercase;
-    color:var(--ink-soft);
-  }
-  .row{
-    display:grid;
-    grid-template-columns:22px 1.1fr 1.5fr 0.8fr 0.8fr 40px;
-    align-items:center;
-    padding:10px 18px;
-    border-top:1px solid var(--line);
-    gap:8px;
-    background:var(--card);
-  }
-  .row.dragging{
-    opacity:0.4;
-  }
-  .row.drop-above{
-    box-shadow:inset 0 2px 0 0 var(--field);
-  }
-  .row.drop-below{
-    box-shadow:inset 0 -2px 0 0 var(--field);
-  }
-  .handle{
-    cursor:grab;
-    color:var(--ink-soft);
-    font-size:15px;
-    line-height:1;
-    text-align:center;
-    user-select:none;
-    touch-action:none;
-  }
-  .handle:active{ cursor:grabbing; }
-  select, input[type=number], input[type=text]{
-    font-family:'Inter',sans-serif;
-    font-size:14px;
-    padding:8px 10px;
-    border-radius:8px;
-    border:1px solid var(--line);
-    background:var(--paper);
-    color:var(--ink);
-    width:100%;
-  }
-  select:focus, input:focus{
-    outline:none;
-    border-color:var(--field);
-    box-shadow:0 0 0 3px rgba(27,67,50,0.12);
-  }
-  select.pos[data-pos="QB"]{ color:var(--qb); border-color:var(--qb); background:var(--qb-bg); font-weight:500; }
-  select.pos[data-pos="RB"]{ color:var(--rb); border-color:var(--rb); background:var(--rb-bg); font-weight:500; }
-  select.pos[data-pos="WR"]{ color:var(--wr); border-color:var(--wr); background:var(--wr-bg); font-weight:500; }
-  select.pos[data-pos="TE"]{ color:var(--te); border-color:var(--te); background:var(--te-bg); font-weight:500; }
-  select.pos[data-pos="FLEX"]{ color:var(--gold-dark); border-color:var(--gold-dark); background:#FBF2DE; font-weight:500; }
-  input.player:disabled{ color:var(--ink-soft); background:var(--paper); }
-  #rows.mode-player .rank-cell{ display:none; }
-  #rows.mode-rank .player{ display:none; }
-  .rank-cell{ display:flex; gap:4px; }
-  .flexPos{ display:none; width:58px; flex:0 0 auto; padding:8px 4px; font-size:12px; }
-  .rank-cell .rankNum{ flex:1; min-width:0; }
-  .ppg{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:16px;
-    font-weight:600;
-    color:var(--ink);
-    text-align:right;
-    padding-right:4px;
-  }
-  .ppg.empty{ color:var(--ink-soft); font-weight:500; }
-  .vor{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:16px;
-    font-weight:600;
-    color:var(--ink);
-    text-align:right;
-    padding-right:4px;
-  }
-  .vor.negative{ color:var(--qb); }
-  .vor.empty{ color:var(--ink-soft); font-weight:500; }
-  .remove{
-    background:none;
-    border:none;
-    color:var(--ink-soft);
-    font-size:18px;
-    cursor:pointer;
-    width:32px;
-    height:32px;
-    border-radius:8px;
-  }
-  .remove:hover{ background:var(--paper); color:var(--qb); }
-  .add-row{
-    padding:14px 18px;
-    border-top:1px solid var(--line);
-  }
-  .add-row button{
-    width:100%;
-    padding:10px;
-    border-radius:8px;
-    border:1px dashed var(--line);
-    background:none;
-    color:var(--ink-soft);
-    font-family:'Inter',sans-serif;
-    font-size:13px;
-    cursor:pointer;
-  }
-  .add-row button:hover{ border-color:var(--field); color:var(--field); }
-  .total-bar{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-end;
-    background:var(--field-dark);
-    padding:20px 24px;
-  }
-  .total-bar .label{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:16px;
-    letter-spacing:0.05em;
-    text-transform:uppercase;
-    color:#CFE0D6;
-  }
-  .total-bar .value{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:32px;
-    font-weight:600;
-    color:var(--gold);
-  }
-  footer{
-    text-align:center;
-    font-size:12px;
-    color:var(--ink-soft);
-    margin-top:22px;
-  }
-  @media (prefers-reduced-motion:no-preference){
-    .row{ transition:background 0.15s ease; }
-    .row:hover{ background:#FCFBF8; }
-  }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Build personal fantasy football rankings and estimate lineup PPG and value over replacement from historical positional-rank averages.">
+  <meta name="theme-color" content="#173f30">
+  <title>Lineup PPG Calculator</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./src/app.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to calculator</a>
 
-<header>
-  <p class="eyebrow">5-year averages, ranked by position</p>
-  <h1>Lineup PPG calculator</h1>
-  <p>Rank your own players, then build a lineup from your rankings.</p>
-</header>
+  <header class="hero">
+    <p class="eyebrow">Historical rank-based lineup analysis</p>
+    <h1>Lineup PPG Calculator</h1>
+    <p>Turn your personal player rankings into a transparent lineup value estimate.</p>
+  </header>
 
-<div class="tabs">
-  <button class="tab-btn active" data-tab="rankings">Rankings</button>
-  <button class="tab-btn" data-tab="lineup">Lineup</button>
-</div>
-
-<main>
-
-  <div class="tab-panel active" id="panel-rankings">
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <h2>Your rankings</h2>
-          <p>Click or drag a pool player into your ranked order.</p>
-        </div>
-      </div>
-      <div class="rank-grid" id="rankGrid">
-        <div class="rank-col" data-pos="QB">
-          <div class="rank-col-head">QB</div>
-          <div class="subhead">Ranked</div>
-          <div class="rank-list" id="rank-list-QB"></div>
-          <div class="subhead">Pool &mdash; click or drag to rank</div>
-          <div class="pool-list" id="pool-list-QB"></div>
-          <div class="rank-add">
-            <input type="text" id="add-input-QB" placeholder="Add a player" />
-            <button id="add-QB">Add</button>
-          </div>
-        </div>
-        <div class="rank-col" data-pos="RB">
-          <div class="rank-col-head">RB</div>
-          <div class="subhead">Ranked</div>
-          <div class="rank-list" id="rank-list-RB"></div>
-          <div class="subhead">Pool &mdash; click or drag to rank</div>
-          <div class="pool-list" id="pool-list-RB"></div>
-          <div class="rank-add">
-            <input type="text" id="add-input-RB" placeholder="Add a player" />
-            <button id="add-RB">Add</button>
-          </div>
-        </div>
-        <div class="rank-col" data-pos="WR">
-          <div class="rank-col-head">WR</div>
-          <div class="subhead">Ranked</div>
-          <div class="rank-list" id="rank-list-WR"></div>
-          <div class="subhead">Pool &mdash; click or drag to rank</div>
-          <div class="pool-list" id="pool-list-WR"></div>
-          <div class="rank-add">
-            <input type="text" id="add-input-WR" placeholder="Add a player" />
-            <button id="add-WR">Add</button>
-          </div>
-        </div>
-        <div class="rank-col" data-pos="TE">
-          <div class="rank-col-head">TE</div>
-          <div class="subhead">Ranked</div>
-          <div class="rank-list" id="rank-list-TE"></div>
-          <div class="subhead">Pool &mdash; click or drag to rank</div>
-          <div class="pool-list" id="pool-list-TE"></div>
-          <div class="rank-add">
-            <input type="text" id="add-input-TE" placeholder="Add a player" />
-            <button id="add-TE">Add</button>
-          </div>
-        </div>
-      </div>
-      <div class="data-actions">
-        <button id="exportBtn">Export data</button>
-        <button id="importBtn">Import data</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none;" />
-        <span class="save-note" id="saveNote">Saved to this browser</span>
-      </div>
+  <nav class="tabs" aria-label="Calculator sections">
+    <div role="tablist" aria-label="Calculator views">
+      <button
+        id="tab-rankings"
+        class="tab-button is-active"
+        type="button"
+        role="tab"
+        aria-selected="true"
+        aria-controls="panel-rankings"
+        tabindex="0"
+        data-tab="rankings"
+      >Rankings</button>
+      <button
+        id="tab-lineup"
+        class="tab-button"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        aria-controls="panel-lineup"
+        tabindex="-1"
+        data-tab="lineup"
+      >Lineup</button>
+      <button
+        id="tab-settings"
+        class="tab-button"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        aria-controls="panel-settings"
+        tabindex="-1"
+        data-tab="settings"
+      >Settings</button>
     </div>
-  </div>
+  </nav>
 
-  <div class="tab-panel" id="panel-lineup">
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <h2>Lineup</h2>
-          <p>Pick a position, then a player or a rank number.</p>
+  <main id="main" class="page-shell">
+    <div id="status" class="status-message" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+    <section
+      id="panel-rankings"
+      class="tab-panel"
+      role="tabpanel"
+      aria-labelledby="tab-rankings"
+      tabindex="0"
+    >
+      <article class="card">
+        <div class="card-heading">
+          <div>
+            <p class="section-kicker">Your board</p>
+            <h2>Player rankings</h2>
+            <p>Add players from each pool, then reorder them with drag-and-drop or the arrow buttons.</p>
+          </div>
+          <div class="toolbar" aria-label="Ranking actions">
+            <button class="button button-quiet" id="undoButton" type="button" disabled>Undo</button>
+            <button class="button button-quiet" id="clearRankingsButton" type="button">Clear rankings</button>
+          </div>
         </div>
-        <div class="mode-toggle" id="modeToggle">
-          <button data-mode="player" class="active">By player</button>
-          <button data-mode="rank">By rank</button>
+        <div id="rankGrid" class="rank-grid"></div>
+        <div class="data-actions">
+          <div class="toolbar">
+            <button class="button" id="exportButton" type="button">Export backup</button>
+            <button class="button" id="importButton" type="button">Import backup</button>
+            <input id="importFile" class="sr-only" type="file" accept=".json,application/json">
+          </div>
+          <span class="save-note"><span aria-hidden="true">●</span> Saved on this device</span>
         </div>
+      </article>
+    </section>
+
+    <section
+      id="panel-lineup"
+      class="tab-panel"
+      role="tabpanel"
+      aria-labelledby="tab-lineup"
+      tabindex="0"
+      hidden
+    >
+      <article class="card">
+        <div class="card-heading lineup-heading">
+          <div>
+            <p class="section-kicker">Roster builder</p>
+            <h2>Lineup</h2>
+            <p>Choose ranked players or model slots by positional rank.</p>
+          </div>
+          <fieldset class="segmented-control">
+            <legend class="sr-only">Lineup entry mode</legend>
+            <label>
+              <input type="radio" name="lineupMode" value="player" checked>
+              <span>By player</span>
+            </label>
+            <label>
+              <input type="radio" name="lineupMode" value="rank">
+              <span>By rank</span>
+            </label>
+          </fieldset>
+        </div>
+
+        <div class="baseline-strip" aria-label="Replacement rank baselines">
+          <span id="baselineLabel">Replacement ranks</span>
+          <div id="baselineSummary" class="baseline-values"></div>
+        </div>
+
+        <div id="lineupRows" class="lineup-rows" role="list" aria-label="Lineup slots"></div>
+
+        <div class="lineup-actions">
+          <button class="button button-wide" id="addSlotButton" type="button">+ Add lineup slot</button>
+          <button class="button button-quiet" id="clearLineupButton" type="button">Clear lineup</button>
+        </div>
+
+        <div class="total-bar" aria-label="Lineup totals">
+          <div>
+            <span>Total PPG</span>
+            <strong id="totalPpg">0.0</strong>
+          </div>
+          <div>
+            <span>Total VOR</span>
+            <strong id="totalVor">0.0</strong>
+          </div>
+        </div>
+      </article>
+
+      <div class="explanation-grid">
+        <article class="info-card">
+          <h3>How PPG works</h3>
+          <p>A player uses their position in your rankings. Rank mode uses the position and rank you enter. PPG follows the scoring format selected in Settings, and ranks beyond the dataset use its last available value.</p>
+        </article>
+        <article class="info-card">
+          <h3>How VOR works</h3>
+          <p>Value over replacement subtracts the PPG at your calculated league-wide replacement rank from the selected rank’s PPG.</p>
+        </article>
       </div>
-      <div class="col-heads">
-        <span></span>
-        <span>Position</span>
-        <span id="colHeadPlayer">Player</span>
-        <span style="text-align:right;">PPG</span>
-        <span style="text-align:right;">VOR</span>
-        <span></span>
+    </section>
+
+    <section
+      id="panel-settings"
+      class="tab-panel"
+      role="tabpanel"
+      aria-labelledby="tab-settings"
+      tabindex="0"
+      hidden
+    >
+      <div class="settings-grid">
+        <article class="card settings-card">
+          <div class="card-heading">
+            <div>
+              <p class="section-kicker">League model</p>
+              <h2>League and scoring settings</h2>
+              <p>Choose a scoring profile and configure how lineup slots become league-wide replacement ranks.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <label class="field">
+              <span>Number of teams</span>
+              <input id="teamsInput" type="number" min="2" max="32" step="1" inputmode="numeric">
+              <small>Allowed range: 2–32 teams.</small>
+            </label>
+            <label class="field">
+              <span>Scoring format</span>
+              <select id="scoringFormatSelect"></select>
+              <small>Historical ranks are recalculated separately for Standard, Half-PPR, and PPR scoring.</small>
+            </label>
+            <label class="field field-wide">
+              <span>FLEX demand assigned to RB</span>
+              <div class="range-row">
+                <input id="flexShareInput" type="range" min="0" max="100" step="5">
+                <output id="flexShareOutput" for="flexShareInput">50%</output>
+              </div>
+              <small>The remainder is assigned to WR. A 50% setting splits FLEX replacement demand evenly.</small>
+            </label>
+          </div>
+        </article>
+
+        <article class="card settings-card dataset-card">
+          <div class="card-heading">
+            <div>
+              <p class="section-kicker">Transparency</p>
+              <h2>Dataset information</h2>
+              <p>These facts describe the historical PPG values currently bundled with the calculator.</p>
+            </div>
+          </div>
+          <dl id="datasetDetails" class="dataset-details"></dl>
+          <div id="datasetLinks" class="dataset-links" aria-label="Dataset sources"></div>
+          <div class="callout callout-data">
+            <strong>Reproducible local snapshot</strong>
+            <p><code>scripts/collect-data.mjs</code> downloads completed-season statistics from nflverse and current player metadata from Sleeper, validates both sources, and generates the local files used by this site. The browser never contacts either provider directly.</p>
+          </div>
+        </article>
+
+        <article class="card settings-card">
+          <div class="card-heading">
+            <div>
+              <p class="section-kicker">Local data</p>
+              <h2>Reset calculator</h2>
+              <p>Remove rankings, custom players, lineup changes, and settings saved by this version on this device.</p>
+            </div>
+          </div>
+          <div class="danger-zone">
+            <button class="button button-danger" id="resetButton" type="button">Reset all calculator data</button>
+          </div>
+        </article>
       </div>
-      <div id="rows" class="mode-player"></div>
-      <div class="add-row"><button id="addRow">+ Add slot</button></div>
-      <div class="total-bar">
-        <div>
-          <div class="label">Total PPG</div>
-          <div class="value" id="total">0.0</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="label">Total VOR</div>
-          <div class="value" id="totalVor">0.0</div>
-        </div>
+    </section>
+  </main>
+
+  <dialog id="confirmDialog" class="dialog">
+    <form method="dialog">
+      <h2 id="dialogTitle">Confirm action</h2>
+      <p id="dialogMessage"></p>
+      <div class="dialog-actions">
+        <button class="button button-quiet" value="cancel">Cancel</button>
+        <button class="button button-danger" id="dialogConfirmButton" value="confirm">Confirm</button>
       </div>
-    </div>
-    <footer>Rank is capped by how many players exist at that position in the data.</footer>
-    <footer style="margin-top:6px;">VOR is a representation of a player's value, it takes the baseline and subtracts that rank vs the baseline to find the VOR.</footer>
-  </div>
+    </form>
+  </dialog>
 
-</main>
-
-<script>
-const data = {
-QB: [23.7,22.2,22.0,21.1,20.6,20.0,19.6,18.9,18.8,18.5,18.3,18.0,17.5,17.3,16.8,16.5,16.0,15.8,15.6,15.5,15.4,15.0,14.7,14.6,14.4,14.2,14.1,13.8,13.5,13.3,13.1,10.3],
-WR: [23.8,21.5,20.3,19.6,19.1,18.1,17.5,17.3,16.9,16.5,16.3,16.0,15.6,15.5,15.3,15.2,14.9,14.7,14.5,14.2,14.0,14.0,13.8,13.6,13.6,13.4,13.4,13.3,13.2,13.1,12.7,12.5,12.3,12.1,12.0,11.9,11.8,11.7,11.4,11.3,11.2,11.1,11.0,10.8,10.7,10.5,10.3,10.2,10.1,10.0],
-RB: [23.5,21.4,20.1,19.2,18.5,17.5,17.1,16.8,16.4,16.0,15.7,15.5,15.2,15.1,14.8,14.7,14.4,14.1,13.9,13.5,13.1,13.0,12.6,12.3,12.1,12.0,11.8,11.7,11.5,11.4,11.2,11.1,11.0,10.6,10.4,10.1,9.9,9.8,9.6,9.4,9.1,8.9,8.6,8.5,8.4,8.3,8.1,7.7,7.6,7.3],
-TE: [17.1,14.9,14.3,13.7,12.6,12.2,11.6,10.9,10.6,10.4,10.2,9.8,9.7,9.6,9.3,9.1,8.8,8.5,8.3,8.0,7.9,7.8,7.5,7.4]
-};
-
-const BASELINE_WEIGHT = { QB:12, RB:12, WR:12, TE:12, FLEX_RB:6, FLEX_WR:6 };
-
-const DEFAULT_POOL = {
-QB: ["Josh Allen","Drake Maye","Joe Burrow","Lamar Jackson","Dak Prescott","Justin Herbert","Jayden Daniels","Caleb Williams","Trevor Lawrence","Brock Purdy","Jalen Hurts","Jared Goff","Matthew Stafford","Bo Nix","Jaxson Dart","Jordan Love","Patrick Mahomes","Baker Mayfield","Sam Darnold","Kyler Murray","Tyler Shough","Malik Willis","C.J. Stroud","Daniel Jones","Cam Ward","Bryce Young","Geno Smith","Fernando Mendoza","Aaron Rodgers","Jacoby Brissett","Tua Tagovailoa","Michael Penix Jr.","Deshaun Watson","Shedeur Sanders","Carson Beck","Kirk Cousins","Anthony Richardson"],
-RB: ["Bijan Robinson","Jahmyr Gibbs","Christian McCaffrey","Jonathan Taylor","James Cook","Ashton Jeanty","Chase Brown","De'Von Achane","Derrick Henry","Saquon Barkley","Omarion Hampton","Jeremiyah Love","Kenneth Walker III","Breece Hall","Kyren Williams","Travis Etienne","Javonte Williams","Cam Skattebo","Josh Jacobs","D'Andre Swift","Bucky Irving","Quinshon Judkins","David Montgomery","TreVeyon Henderson","Bhayshul Tuten","Jaylen Warren","Jadarian Price","Chuba Hubbard","Rhamondre Stevenson","JK Dobbins","Tony Pollard","Rico Dowdle","Kyle Monangai","Jordan Mason","Kenny Gainwell","Aaron Jones","RJ Harvey","Blake Corum","Chris Rodriguez","Jacory Croskey-Merritt","Rachaad White","Tyjae Spears","Tyrone Tracy","Keaton Mitchell","Dylan Sampson","Woody Marks","Tyler Allgeier","Brian Robinson","Zach Charbonnet","Emmett Johnson","Nick Singleton","Mike Washington","Chris Brooks","James Conner","Jordan James","Jonah Coleman","Ray Davis","Samaje Perine","Tank Bigsby","Emanuel Wilson","LeQuint Allen","Ty Johnson","Justice Hill","Braelon Allen","Isiah Pacheco","Sean Tucker","Najee Harris","Marshawn Lloyd","Alvin Kamara","Kaytron Allen"],
-WR: ["Puka Nacua","Ja'Marr Chase","Jaxon Smith-Njigba","Amon-Ra St. Brown","CeeDee Lamb","Justin Jefferson","Drake London","Nico Collins","George Pickens","A.J. Brown","Chris Olave","Rashee Rice","Garrett Wilson","Zay Flowers","Emeka Egbuka","Malik Nabers","DeVonta Smith","Terry McLaurin","Tetairoa McMillan","Tee Higgins","Ladd McConkey","Jameson Williams","Mike Evans","Luther Burden III","Jaylen Waddle","Brian Thomas Jr.","Parker Washington","Carnell Tate","Christian Watson","Davante Adams","Rome Odunze","Alec Pierce","DK Metcalf","DJ Moore","Jordyn Tyson","Marvin Harrison Jr.","Chris Godwin","Stefon Diggs","Jakobi Meyers","Makai Lemon","Jordan Addison","Ricky Pearsall","Michael Pittman Jr.","Courtland Sutton","Romeo Doubs","Khalil Shakir","Michael Wilson","Jayden Reed","Josh Downs","Quentin Johnston","Jayden Higgins","Jalen Coker","Xavier Worthy","Wan'Dale Robinson","Matthew Golden","KC Concepcion","Jalen Nailor","Denzel Boston","Rashid Shaheed","Jalen McMillan","Brandon Aiyuk","Omar Cooper","Deebo Samuel","Ryan Flournoy","Jauan Jennings","Jerry Jeudy","De'Zhaun Stribling","Tre Harris","Tre Tucker","Malik Washington","Germie Bernard"],
-TE: ["Brock Bowers","Trey McBride","Colston Loveland","Tyler Warren","Sam LaPorta","Harold Fannin Jr.","Tucker Kraft","Kyle Pitts","George Kittle","Travis Kelce","Jake Ferguson","Dalton Kincaid","Mark Andrews","Brenton Strange","Isaiah Likely","Oronde Gadsden II","Hunter Henry","Chig Okonkwo","AJ Barner","Dallas Goedert","Kenyon Sadiq","Juwan Johnson","Dalton Schultz","TJ Hockenson","Pat Freiermuth","Cade Otton","Gunnar Helm","Greg Dulcich","Mike Gesicki","Darnell Washington","Darren Waller","Colby Parkinson","Eli Stowers","Terrance Ferguson","Mason Taylor","Theo Johnson"]
-};
-
-const POSITIONS = ["QB","RB","WR","TE"];
-const RANK_KEY = "lineupPpgCalc_rankings_v1";
-const POOL_KEY = "lineupPpgCalc_pool_v1";
-const SLOT_KEY = "lineupPpgCalc_slots_v1";
-const MODE_KEY = "lineupPpgCalc_mode_v1";
-
-(function migrateOldKeys(){
-  const oldToNew = { ffRankings: RANK_KEY, ffPool: POOL_KEY, ffSlots: SLOT_KEY, ffMode: MODE_KEY };
-  try{
-    Object.keys(oldToNew).forEach(oldKey => {
-      const newKey = oldToNew[oldKey];
-      if(localStorage.getItem(newKey) === null && localStorage.getItem(oldKey) !== null){
-        localStorage.setItem(newKey, localStorage.getItem(oldKey));
-      }
-    });
-  }catch(e){}
-})();
-
-let rankings = loadJSON(RANK_KEY) || {QB:[], RB:[], WR:[], TE:[]};
-POSITIONS.forEach(p => { if(!Array.isArray(rankings[p])) rankings[p] = []; });
-let storedPool = loadJSON(POOL_KEY);
-const storedPoolEmpty = !storedPool || POSITIONS.every(p => !Array.isArray(storedPool[p]) || storedPool[p].length === 0);
-const rankingsEmpty = POSITIONS.every(p => rankings[p].length === 0);
-let pool = (storedPoolEmpty && rankingsEmpty) ? JSON.parse(JSON.stringify(DEFAULT_POOL)) : (storedPool || {QB:[], RB:[], WR:[], TE:[]});
-POSITIONS.forEach(p => { if(!Array.isArray(pool[p])) pool[p] = []; });
-let backfilled = false;
-POSITIONS.forEach(p => {
-  (DEFAULT_POOL[p] || []).forEach(name => {
-    if(!pool[p].includes(name) && !rankings[p].includes(name)){
-      pool[p].push(name);
-      backfilled = true;
-    }
-  });
-});
-if(backfilled) savePool();
-
-const defaultSlots = [
-  {pos:"QB", player:null, rank:null, flexPos:null},
-  {pos:"RB", player:null, rank:null, flexPos:null},
-  {pos:"RB", player:null, rank:null, flexPos:null},
-  {pos:"WR", player:null, rank:null, flexPos:null},
-  {pos:"WR", player:null, rank:null, flexPos:null},
-  {pos:"TE", player:null, rank:null, flexPos:null},
-  {pos:"FLEX", player:null, rank:null, flexPos:"RB"}
-];
-let savedSlots = loadJSON(SLOT_KEY) || defaultSlots;
-let lineupMode = loadJSON(MODE_KEY) || "player";
-
-const rowsEl = document.getElementById("rows");
-const totalEl = document.getElementById("total");
-const totalVorEl = document.getElementById("totalVor");
-let draggedRow = null;
-let dragItem = null;
-let rowIdCounter = 0;
-
-function loadJSON(key){
-  try{
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  }catch(e){ return null; }
-}
-function saveJSON(key, val){
-  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
-}
-function saveRankings(){ saveJSON(RANK_KEY, rankings); }
-function savePool(){ saveJSON(POOL_KEY, pool); }
-function saveSlots(){
-  const slots = Array.from(document.querySelectorAll(".row")).map(row => ({
-    pos: row.querySelector(".pos").value,
-    player: row.querySelector(".player").value || null,
-    rank: row.querySelector(".rankNum").value || null,
-    flexPos: row.querySelector(".flexPos").value || null
-  }));
-  saveJSON(SLOT_KEY, slots);
-}
-function escapeHtml(s){
-  return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-
-function ppgFor(pos, rank){
-  const arr = data[pos];
-  if(!arr || !rank || rank < 1 || rank > arr.length) return null;
-  return arr[rank-1];
-}
-function rankOf(pos, player){
-  if(!player) return null;
-  const idx = rankings[pos].indexOf(player);
-  return idx === -1 ? null : idx + 1;
-}
-function resolveFlexPlayer(name){
-  if(!name) return null;
-  if(rankings.RB.includes(name)) return {pos:"RB", rank: rankings.RB.indexOf(name)+1};
-  if(rankings.WR.includes(name)) return {pos:"WR", rank: rankings.WR.indexOf(name)+1};
-  return null;
-}
-function computeBaselines(){
-  const counts = {QB:0, RB:0, WR:0, TE:0, FLEX:0};
-  document.querySelectorAll(".row").forEach(row => {
-    const pos = row.querySelector(".pos").value;
-    if(counts[pos] !== undefined) counts[pos]++;
-  });
-  return {
-    QB: counts.QB * BASELINE_WEIGHT.QB,
-    RB: counts.RB * BASELINE_WEIGHT.RB + counts.FLEX * BASELINE_WEIGHT.FLEX_RB,
-    WR: counts.WR * BASELINE_WEIGHT.WR + counts.FLEX * BASELINE_WEIGHT.FLEX_WR,
-    TE: counts.TE * BASELINE_WEIGHT.TE
-  };
-}
-function resolveRowPosRank(row){
-  const selectedPos = row.querySelector(".pos").value;
-  if(selectedPos !== "FLEX"){
-    let rank;
-    if(lineupMode === "player"){
-      rank = rankOf(selectedPos, row.querySelector(".player").value);
-    } else {
-      rank = parseInt(row.querySelector(".rankNum").value, 10);
-    }
-    return {pos:selectedPos, rank};
-  }
-  if(lineupMode === "player"){
-    const resolved = resolveFlexPlayer(row.querySelector(".player").value);
-    return resolved || {pos:null, rank:null};
-  }
-  const flexPos = row.querySelector(".flexPos").value;
-  const rank = parseInt(row.querySelector(".rankNum").value, 10);
-  return {pos:flexPos, rank};
-}
-
-function populatePlayerField(row, pos, selectedName){
-  const input = row.querySelector(".player");
-  const dl = row.querySelector("datalist");
-  const arr = pos === "FLEX" ? [...rankings.RB, ...rankings.WR] : (rankings[pos] || []);
-  dl.innerHTML = arr.map(name => `<option value="${escapeHtml(name)}"></option>`).join('');
-  if(arr.length === 0){
-    input.placeholder = "Add players in Rankings";
-    input.disabled = true;
-    input.value = "";
-  } else {
-    input.placeholder = "Type a player";
-    input.disabled = false;
-    input.value = (selectedName && arr.includes(selectedName)) ? selectedName : "";
-  }
-}
-
-function refreshAllPlayerFields(){
-  document.querySelectorAll(".row").forEach(row => {
-    const pos = row.querySelector(".pos").value;
-    const current = row.querySelector(".player").value;
-    populatePlayerField(row, pos, current);
-  });
-  recalc();
-}
-
-function updateRowFlexUI(row){
-  const pos = row.querySelector(".pos").value;
-  row.querySelector(".pos").setAttribute("data-pos", pos);
-  const flexSel = row.querySelector(".flexPos");
-  flexSel.style.display = (pos === "FLEX" && lineupMode === "rank") ? "block" : "none";
-}
-
-function recalc(){
-  const baselines = computeBaselines();
-  let sum = 0;
-  let vorSum = 0;
-  document.querySelectorAll(".row").forEach(row => {
-    updateRowFlexUI(row);
-    const { pos, rank } = resolveRowPosRank(row);
-    const val = pos ? ppgFor(pos, rank) : null;
-    let vorVal = null;
-    if(pos && val !== null){
-      const baseRank = baselines[pos];
-      const baseVal = ppgFor(pos, baseRank);
-      vorVal = (baseVal !== null) ? (val - baseVal) : null;
-    }
-    const ppgEl = row.querySelector(".ppg");
-    const vorEl = row.querySelector(".vor");
-    if(val === null){
-      ppgEl.textContent = "-";
-      ppgEl.classList.add("empty");
-    } else {
-      ppgEl.textContent = val.toFixed(1);
-      ppgEl.classList.remove("empty");
-      sum += val;
-    }
-    if(vorVal === null){
-      vorEl.textContent = "-";
-      vorEl.classList.add("empty");
-      vorEl.classList.remove("negative");
-    } else {
-      vorEl.textContent = vorVal.toFixed(1);
-      vorEl.classList.remove("empty");
-      vorEl.classList.toggle("negative", vorVal < 0);
-      vorSum += vorVal;
-    }
-  });
-  totalEl.textContent = sum.toFixed(1);
-  totalVorEl.textContent = vorSum.toFixed(1);
-  saveSlots();
-}
-
-function addRow(pos, player, rank, flexPos){
-  rowIdCounter++;
-  const row = document.createElement("div");
-  row.className = "row";
-  row.draggable = false;
-  row.innerHTML = `
-    <span class="handle" aria-label="Drag to reorder">&#8942;&#8942;</span>
-    <select class="pos" data-pos="${pos}">
-      <option value="QB">QB</option>
-      <option value="RB">RB</option>
-      <option value="WR">WR</option>
-      <option value="TE">TE</option>
-      <option value="FLEX">FLEX</option>
-    </select>
-    <input type="text" class="player" list="dl-${rowIdCounter}" autocomplete="off" />
-    <datalist id="dl-${rowIdCounter}"></datalist>
-    <div class="rank-cell">
-      <select class="flexPos">
-        <option value="RB">RB</option>
-        <option value="WR">WR</option>
-      </select>
-      <input type="number" class="rankNum" min="1" value="${rank || ''}" placeholder="Rank" />
-    </div>
-    <span class="ppg">-</span>
-    <span class="vor">-</span>
-    <button class="remove" aria-label="Remove slot">&times;</button>
-  `;
-  row.querySelector(".pos").value = pos;
-  row.querySelector(".flexPos").value = flexPos || "RB";
-  rowsEl.appendChild(row);
-  populatePlayerField(row, pos, player);
-  updateRowFlexUI(row);
-
-  row.querySelector(".pos").addEventListener("change", (e) => {
-    populatePlayerField(row, e.target.value, null);
-    updateRowFlexUI(row);
-    recalc();
-  });
-  row.querySelector(".player").addEventListener("input", recalc);
-  row.querySelector(".rankNum").addEventListener("input", recalc);
-  row.querySelector(".flexPos").addEventListener("change", recalc);
-  row.querySelector(".remove").addEventListener("click", () => {
-    row.remove();
-    recalc();
-  });
-
-  const handle = row.querySelector(".handle");
-  handle.addEventListener("mousedown", () => { row.draggable = true; });
-  handle.addEventListener("touchstart", () => { row.draggable = true; }, {passive:true});
-  window.addEventListener("mouseup", () => { row.draggable = false; });
-
-  row.addEventListener("dragstart", (e) => {
-    draggedRow = row;
-    row.classList.add("dragging");
-    e.dataTransfer.effectAllowed = "move";
-  });
-  row.addEventListener("dragend", () => {
-    row.classList.remove("dragging");
-    row.draggable = false;
-    document.querySelectorAll(".row").forEach(r => r.classList.remove("drop-above","drop-below"));
-    draggedRow = null;
-    saveSlots();
-  });
-  row.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    if(!draggedRow || draggedRow === row) return;
-    const rect = row.getBoundingClientRect();
-    const isBelow = e.clientY - rect.top > rect.height / 2;
-    row.classList.toggle("drop-below", isBelow);
-    row.classList.toggle("drop-above", !isBelow);
-  });
-  row.addEventListener("dragleave", () => {
-    row.classList.remove("drop-above","drop-below");
-  });
-  row.addEventListener("drop", (e) => {
-    e.preventDefault();
-    row.classList.remove("drop-above","drop-below");
-    if(!draggedRow || draggedRow === row) return;
-    const rect = row.getBoundingClientRect();
-    const isBelow = e.clientY - rect.top > rect.height / 2;
-    row.insertAdjacentElement(isBelow ? "afterend" : "beforebegin", draggedRow);
-    recalc();
-  });
-}
-
-function moveToRanked(pos, name, atIndex){
-  if(rankings[pos].includes(name)) return;
-  pool[pos] = pool[pos].filter(n => n !== name);
-  const idx = (atIndex === undefined || atIndex === null) ? rankings[pos].length : atIndex;
-  rankings[pos].splice(idx, 0, name);
-  savePool();
-  saveRankings();
-  renderRankings();
-  renderPool();
-  refreshAllPlayerFields();
-}
-
-function renderRankings(){
-  POSITIONS.forEach(pos => {
-    const listEl = document.getElementById("rank-list-" + pos);
-    listEl.innerHTML = "";
-    if(rankings[pos].length === 0){
-      listEl.classList.add("empty-drop");
-      listEl.textContent = "Drag or click pool players here";
-    } else {
-      listEl.classList.remove("empty-drop");
-    }
-    rankings[pos].forEach((name, idx) => {
-      const item = document.createElement("div");
-      item.className = "rank-item";
-      item.draggable = false;
-      item.innerHTML = `
-        <span class="handle" aria-label="Drag to reorder">&#8942;</span>
-        <span class="rank-num">${idx+1}</span>
-        <span class="rank-name">${escapeHtml(name)}</span>
-        <button class="remove" aria-label="Remove player">&times;</button>
-      `;
-      listEl.appendChild(item);
-
-      const handle = item.querySelector(".handle");
-      handle.addEventListener("mousedown", () => { item.draggable = true; });
-      handle.addEventListener("touchstart", () => { item.draggable = true; }, {passive:true});
-      window.addEventListener("mouseup", () => { item.draggable = false; });
-
-      item.addEventListener("dragstart", (e) => {
-        dragItem = { source:"rank", pos, name };
-        item.classList.add("dragging");
-        e.dataTransfer.effectAllowed = "move";
-      });
-      item.addEventListener("dragend", () => {
-        item.classList.remove("dragging");
-        item.draggable = false;
-        document.querySelectorAll(".rank-item").forEach(r => r.classList.remove("drop-above","drop-below"));
-        dragItem = null;
-      });
-      item.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if(!dragItem || dragItem.pos !== pos) return;
-        const rect = item.getBoundingClientRect();
-        const isBelow = e.clientY - rect.top > rect.height / 2;
-        item.classList.toggle("drop-below", isBelow);
-        item.classList.toggle("drop-above", !isBelow);
-      });
-      item.addEventListener("dragleave", () => {
-        item.classList.remove("drop-above","drop-below");
-      });
-      item.addEventListener("drop", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        item.classList.remove("drop-above","drop-below");
-        if(!dragItem || dragItem.pos !== pos) return;
-        const rect = item.getBoundingClientRect();
-        const isBelow = e.clientY - rect.top > rect.height / 2;
-        let toIdx = rankings[pos].indexOf(name);
-        toIdx = isBelow ? toIdx + 1 : toIdx;
-        if(dragItem.source === "rank"){
-          if(dragItem.name === name) return;
-          const arr = rankings[pos];
-          const fromIdx = arr.indexOf(dragItem.name);
-          arr.splice(fromIdx, 1);
-          if(fromIdx < toIdx) toIdx -= 1;
-          arr.splice(toIdx, 0, dragItem.name);
-          saveRankings();
-          renderRankings();
-          refreshAllPlayerFields();
-        } else if(dragItem.source === "pool"){
-          moveToRanked(pos, dragItem.name, toIdx);
-        }
-      });
-
-      item.querySelector(".remove").addEventListener("click", () => {
-        rankings[pos] = rankings[pos].filter(n => n !== name);
-        if(!pool[pos].includes(name)) pool[pos].push(name);
-        saveRankings();
-        savePool();
-        renderRankings();
-        renderPool();
-        refreshAllPlayerFields();
-      });
-    });
-  });
-}
-
-function renderPool(){
-  POSITIONS.forEach(pos => {
-    const listEl = document.getElementById("pool-list-" + pos);
-    listEl.innerHTML = "";
-    const rankListEl = document.getElementById("rank-list-" + pos);
-
-    pool[pos].forEach(name => {
-      const item = document.createElement("div");
-      item.className = "pool-item";
-      item.draggable = true;
-      item.innerHTML = `<span class="add-icon">+</span><span class="pool-name">${escapeHtml(name)}</span>`;
-      item.addEventListener("click", () => moveToRanked(pos, name));
-      item.addEventListener("dragstart", (e) => {
-        dragItem = { source:"pool", pos, name };
-        item.classList.add("dragging");
-        e.dataTransfer.effectAllowed = "move";
-      });
-      item.addEventListener("dragend", () => {
-        item.classList.remove("dragging");
-        dragItem = null;
-        rankListEl.classList.remove("drag-over");
-      });
-      listEl.appendChild(item);
-    });
-
-    rankListEl.ondragover = (e) => {
-      e.preventDefault();
-      if(dragItem && dragItem.source === "pool" && dragItem.pos === pos){
-        rankListEl.classList.add("drag-over");
-      }
-    };
-    rankListEl.ondragleave = () => rankListEl.classList.remove("drag-over");
-    rankListEl.ondrop = (e) => {
-      e.preventDefault();
-      rankListEl.classList.remove("drag-over");
-      if(dragItem && dragItem.source === "pool" && dragItem.pos === pos){
-        moveToRanked(pos, dragItem.name);
-      }
-    };
-  });
-}
-
-POSITIONS.forEach(pos => {
-  const input = document.getElementById("add-input-" + pos);
-  const btn = document.getElementById("add-" + pos);
-  const addPlayer = () => {
-    const val = input.value.trim();
-    if(!val || pool[pos].includes(val) || rankings[pos].includes(val)){ input.value = ""; return; }
-    pool[pos].push(val);
-    input.value = "";
-    savePool();
-    renderPool();
-  };
-  btn.addEventListener("click", addPlayer);
-  input.addEventListener("keydown", (e) => { if(e.key === "Enter") addPlayer(); });
-});
-
-document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
-  });
-});
-
-document.querySelectorAll("#modeToggle button").forEach(btn => {
-  btn.addEventListener("click", () => {
-    lineupMode = btn.dataset.mode;
-    saveJSON(MODE_KEY, lineupMode);
-    document.querySelectorAll("#modeToggle button").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    rowsEl.classList.toggle("mode-player", lineupMode === "player");
-    rowsEl.classList.toggle("mode-rank", lineupMode === "rank");
-    document.getElementById("colHeadPlayer").textContent = lineupMode === "player" ? "Player" : "Rank";
-    recalc();
-  });
-});
-
-document.getElementById("exportBtn").addEventListener("click", () => {
-  const slots = Array.from(document.querySelectorAll(".row")).map(row => ({
-    pos: row.querySelector(".pos").value,
-    player: row.querySelector(".player").value || null,
-    rank: row.querySelector(".rankNum").value || null
-  }));
-  const blob = new Blob([JSON.stringify({ rankings, pool, slots, lineupMode }, null, 2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "lineup-data.json";
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-document.getElementById("importBtn").addEventListener("click", () => {
-  document.getElementById("importFile").click();
-});
-document.getElementById("importFile").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try{
-      const parsed = JSON.parse(reader.result);
-      if(parsed.rankings){
-        rankings = parsed.rankings;
-        POSITIONS.forEach(p => { if(!Array.isArray(rankings[p])) rankings[p] = []; });
-        saveRankings();
-      }
-      if(parsed.pool){
-        pool = parsed.pool;
-        POSITIONS.forEach(p => { if(!Array.isArray(pool[p])) pool[p] = []; });
-        savePool();
-      }
-      renderRankings();
-      renderPool();
-      if(parsed.slots){
-        rowsEl.innerHTML = "";
-        parsed.slots.forEach(s => addRow(s.pos, s.player, s.rank, s.flexPos));
-      }
-      refreshAllPlayerFields();
-    }catch(err){
-      alert("That file could not be read as lineup data.");
-    }
-  };
-  reader.readAsText(file);
-  e.target.value = "";
-});
-
-rowsEl.classList.toggle("mode-player", lineupMode === "player");
-rowsEl.classList.toggle("mode-rank", lineupMode === "rank");
-document.getElementById("colHeadPlayer").textContent = lineupMode === "player" ? "Player" : "Rank";
-document.querySelectorAll("#modeToggle button").forEach(b => {
-  b.classList.toggle("active", b.dataset.mode === lineupMode);
-});
-
-renderRankings();
-renderPool();
-savedSlots.forEach(s => addRow(s.pos, s.player, s.rank, s.flexPos));
-document.getElementById("addRow").addEventListener("click", () => {
-  addRow("QB", null, null);
-  recalc();
-});
-recalc();
-</script>
-
+  <footer class="site-footer">
+    <p>Runs entirely in your browser. Historical statistics: nflverse. Player directory: Sleeper. No account, tracking, or server-side data storage.</p>
+  </footer>
 </body>
 </html>

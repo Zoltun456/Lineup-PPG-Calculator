@@ -1,0 +1,17 @@
+{
+  "name": "lineup-ppg-calculator",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test",
+    "check": "node --check src/app.js && node --check src/calculator.js && node --check src/data.js && node --check src/state.js && node --check scripts/collect-data.mjs && node --check scripts/browser-smoke.mjs && node --check scripts/serve.mjs && node --test && npm run data:validate",
+    "smoke": "node scripts/browser-smoke.mjs",
+    "data:refresh": "node scripts/collect-data.mjs",
+    "data:validate": "node scripts/collect-data.mjs --validate"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
