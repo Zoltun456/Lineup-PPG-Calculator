@@ -1,6 +1,7 @@
 import {
   DEFAULT_PLAYER_POOL,
   DEFAULT_SCORING_FORMAT,
+  EXCLUDED_PLAYER_NAMES,
   POSITIONS,
   SCORING_FORMATS,
   SLOT_POSITIONS,
@@ -19,6 +20,10 @@ export const LEGACY_KEYS = Object.freeze({
 const MAX_PLAYERS_PER_POSITION = 500;
 const MAX_SLOTS = 50;
 const MAX_NAME_LENGTH = 100;
+const EXCLUDED_NAME_KEYS = Object.freeze(Object.fromEntries(POSITIONS.map((position) => [
+  position,
+  new Set(EXCLUDED_PLAYER_NAMES[position].map((name) => name.toLocaleLowerCase())),
+])));
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -116,9 +121,11 @@ function normalizePlayerCollections(inputRankings, inputPool, { backfillDefaults
   const pool = {};
 
   for (const position of POSITIONS) {
-    rankings[position] = uniqueStrings(inputRankings?.[position]);
+    const isEligible = (name) => !EXCLUDED_NAME_KEYS[position].has(name.toLocaleLowerCase());
+    rankings[position] = uniqueStrings(inputRankings?.[position]).filter(isEligible);
     const rankedNames = new Set(rankings[position].map((name) => name.toLocaleLowerCase()));
     pool[position] = uniqueStrings(inputPool?.[position])
+      .filter(isEligible)
       .filter((name) => !rankedNames.has(name.toLocaleLowerCase()));
 
     if (backfillDefaults) {
@@ -152,6 +159,12 @@ export function normalizeState(candidate, options = {}) {
   slots.forEach((slot, index) => {
     if (slotIds.has(slot.id)) slot.id = createSlotId(index);
     slotIds.add(slot.id);
+    if (
+      slot.player
+      && EXCLUDED_NAME_KEYS[slot.player.position].has(slot.player.name.toLocaleLowerCase())
+    ) {
+      slot.player = null;
+    }
   });
 
   return {

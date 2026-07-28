@@ -31,7 +31,9 @@ const FETCH_TIMEOUT_MS = 30_000;
 const FETCH_ATTEMPTS = 3;
 
 const NFLVERSE_RELEASE_BASE = "https://github.com/nflverse/nflverse-data/releases/download/stats_player";
+const NFLVERSE_ROSTER_RELEASE_BASE = "https://github.com/nflverse/nflverse-data/releases/download/rosters";
 const NFLVERSE_DOCS = "https://nflreadr.nflverse.com/reference/load_player_stats.html";
+const NFLVERSE_ROSTER_DOCS = "https://nflreadr.nflverse.com/reference/dictionary_rosters.html";
 const NFLVERSE_SCHEDULE = "https://nflreadr.nflverse.com/articles/nflverse_data_schedule.html";
 const NFLVERSE_LICENSE = "https://github.com/nflverse/nflverse-data/blob/master/LICENSE.md";
 const SLEEPER_ENDPOINT = "https://api.sleeper.app/v1/players/nfl";
@@ -159,6 +161,11 @@ export function defaultSeasons(now = new Date(), count = DEFAULT_SEASON_COUNT) {
   return Array.from({ length: count }, (_, index) => latest - count + index + 1);
 }
 
+export function currentRosterSeason(now = new Date()) {
+  const year = now.getUTCFullYear();
+  return now.getUTCMonth() >= 2 ? year : year - 1;
+}
+
 function parseSeasonArgument(value) {
   if (!value) return defaultSeasons();
   const seasons = [...new Set(value.split(",").map(Number))].sort((a, b) => a - b);
@@ -173,6 +180,10 @@ function parseSeasonArgument(value) {
 
 function nflverseSeasonUrl(season) {
   return `${NFLVERSE_RELEASE_BASE}/stats_player_reg_${season}.csv`;
+}
+
+function nflverseRosterUrl(season) {
+  return `${NFLVERSE_ROSTER_RELEASE_BASE}/roster_${season}.csv`;
 }
 
 function normalizeNflverseRows(csvText, season) {
@@ -231,6 +242,67 @@ function normalizeNflverseRows(csvText, season) {
   return normalized;
 }
 
+function normalizedPlayerName(value) {
+  return String(value ?? "")
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function isRetiredStatus(value) {
+  const status = String(value ?? "").trim().toLocaleUpperCase();
+  return status === "RET" || status === "RETIRED";
+}
+
+export function normalizeCurrentRoster(csvText, season) {
+  const rows = parseCsv(csvText);
+  validateRequiredColumns(rows, [
+    "season",
+    "team",
+    "position",
+    "status",
+    "full_name",
+    "gsis_id",
+    "sleeper_id",
+  ], `nflverse roster ${season}`);
+
+  const unique = new Map();
+  for (const row of rows) {
+    if (
+      Number(row.season) !== season
+      || !POSITIONS.includes(row.position)
+      || !row.team
+      || !row.full_name
+      || isRetiredStatus(row.status)
+    ) continue;
+    const player = {
+      season,
+      team: row.team,
+      position: row.position,
+      status: row.status || null,
+      name: row.full_name,
+      sleeperId: row.sleeper_id || null,
+      gsisId: row.gsis_id || null,
+      yearsExperience: numberOrNull(row.years_exp),
+      jerseyNumber: numberOrNull(row.jersey_number),
+    };
+    const key = player.sleeperId
+      ? `sleeper:${player.sleeperId}`
+      : (player.gsisId
+        ? `gsis:${player.gsisId}`
+        : `name:${player.position}:${normalizedPlayerName(player.name)}`);
+    unique.set(key, player);
+  }
+  const roster = [...unique.values()];
+  for (const position of POSITIONS) {
+    if (roster.filter((player) => player.position === position).length < POSITION_DEPTHS[position]) {
+      throw new Error(`nflverse roster ${season} does not contain enough ${position} players.`);
+    }
+  }
+  return roster;
+}
+
 export function buildHistoricalDataset(seasonRows, seasons) {
   const details = Object.fromEntries(Object.keys(SCORING_FORMATS).map((format) => [
     format,
@@ -286,20 +358,34 @@ function sleeperName(player) {
     .trim();
 }
 
-export function selectSleeperPlayers(rawByPosition) {
+export function selectSleeperPlayers(rawByPosition, currentRoster) {
+  const bySleeperId = new Map();
+  const byGsisId = new Map();
+  const byName = new Map();
+  for (const player of currentRoster ?? []) {
+    if (player.sleeperId) bySleeperId.set(player.sleeperId, player);
+    if (player.gsisId) byGsisId.set(player.gsisId, player);
+    byName.set(`${player.position}:${normalizedPlayerName(player.name)}`, player);
+  }
+
   return Object.fromEntries(POSITIONS.map((position) => {
     const rawPlayers = Object.values(rawByPosition[position] ?? {});
     const selected = rawPlayers.flatMap((player) => {
       const name = sleeperName(player);
       const searchRank = numberOrNull(player.search_rank);
       const depthChartOrder = numberOrNull(player.depth_chart_order);
+      const rosterPlayer = bySleeperId.get(player.player_id)
+        ?? byGsisId.get(player.gsis_id)
+        ?? byName.get(`${position}:${normalizedPlayerName(name)}`);
       const isRelevant = (
         (searchRank !== null && searchRank > 0 && searchRank <= SLEEPER_RELEVANCE_RANK)
-        || (player.team && depthChartOrder !== null && depthChartOrder <= SLEEPER_DEPTH_LIMIT)
+        || (depthChartOrder !== null && depthChartOrder <= SLEEPER_DEPTH_LIMIT)
       );
       if (
         player.active !== true
         || player.position !== position
+        || rosterPlayer?.position !== position
+        || isRetiredStatus(rosterPlayer?.status)
         || !name
         || !isRelevant
         || typeof player.player_id !== "string"
@@ -308,20 +394,24 @@ export function selectSleeperPlayers(rawByPosition) {
       return [{
         id: `sleeper:${player.player_id}`,
         sleeperId: player.player_id,
-        gsisId: typeof player.gsis_id === "string" && player.gsis_id ? player.gsis_id : null,
-        name,
+        gsisId: typeof player.gsis_id === "string" && player.gsis_id
+          ? player.gsis_id
+          : rosterPlayer.gsisId,
+        name: rosterPlayer.name,
         firstName: typeof player.first_name === "string" ? player.first_name : null,
         lastName: typeof player.last_name === "string" ? player.last_name : null,
         position,
-        team: typeof player.team === "string" && player.team ? player.team : null,
+        team: rosterPlayer.team,
         status: typeof player.status === "string" ? player.status : null,
+        rosterStatus: rosterPlayer.status,
+        rosterSeason: rosterPlayer.season,
         injuryStatus: typeof player.injury_status === "string" ? player.injury_status : null,
         active: true,
-        yearsExperience: numberOrNull(player.years_exp),
+        yearsExperience: numberOrNull(player.years_exp) ?? rosterPlayer.yearsExperience,
         age: numberOrNull(player.age),
         depthChartOrder,
         searchRank,
-        jerseyNumber: numberOrNull(player.number),
+        jerseyNumber: numberOrNull(player.number) ?? rosterPlayer.jerseyNumber,
       }];
     });
 
@@ -344,10 +434,52 @@ export function selectSleeperPlayers(rawByPosition) {
   }));
 }
 
-function datasetMetadata({ seasons, generatedAt, sourceFiles, sleeperFiles, players }) {
+export function excludedSleeperPlayerNames(rawByPosition, selectedPlayers) {
+  return Object.fromEntries(POSITIONS.map((position) => {
+    const selectedById = new Map(
+      (selectedPlayers[position] ?? []).map((player) => [player.sleeperId, player]),
+    );
+    const excluded = new Map();
+    for (const player of Object.values(rawByPosition[position] ?? {})) {
+      const name = sleeperName(player);
+      const searchRank = numberOrNull(player.search_rank);
+      const depthChartOrder = numberOrNull(player.depth_chart_order);
+      const wasPreviouslyRelevant = (
+        searchRank !== null
+        && searchRank > 0
+        && searchRank <= SLEEPER_RELEVANCE_RANK
+      ) || (
+        player.team
+        && depthChartOrder !== null
+        && depthChartOrder <= SLEEPER_DEPTH_LIMIT
+      );
+      if (
+        player.active !== true
+        || player.position !== position
+        || !name
+        || !wasPreviouslyRelevant
+        || typeof player.player_id !== "string"
+      ) continue;
+      const selected = selectedById.get(player.player_id);
+      if (!selected || normalizedPlayerName(selected.name) !== normalizedPlayerName(name)) {
+        excluded.set(name.toLocaleLowerCase(), name);
+      }
+    }
+    return [position, [...excluded.values()].sort((left, right) => left.localeCompare(right))];
+  }));
+}
+
+function datasetMetadata({
+  seasons,
+  generatedAt,
+  sourceFiles,
+  rosterFile,
+  sleeperFiles,
+  players,
+}) {
   return {
     schemaVersion: 1,
-    datasetId: `nflverse-sleeper-${seasons[0]}-${seasons.at(-1)}-v1`,
+    datasetId: `nflverse-sleeper-${seasons[0]}-${seasons.at(-1)}-v2`,
     generatedAt,
     seasons,
     defaultScoringFormat: "ppr",
@@ -360,7 +492,7 @@ function datasetMetadata({ seasons, generatedAt, sourceFiles, sleeperFiles, play
       average: `The PPG values at each positional finish are averaged across ${seasons.length} completed seasons.`,
       ties: "Ties in total points are resolved by PPG, then nflverse player ID.",
       rankCapping: "Ranks beyond the generated positional depth use the last available rank.",
-      sleeperPlayerFilter: `Active QB/RB/WR/TE players with Sleeper search rank 1-${SLEEPER_RELEVANCE_RANK}, or an assigned team and depth-chart order 1-${SLEEPER_DEPTH_LIMIT}.`,
+      sleeperPlayerFilter: `Players must appear on the nflverse ${rosterFile.season} NFL roster, be active in Sleeper, and have Sleeper search rank 1-${SLEEPER_RELEVANCE_RANK} or depth-chart order 1-${SLEEPER_DEPTH_LIMIT}. Teamless stale and retired Sleeper records are excluded.`,
     },
     sources: {
       nflverse: {
@@ -370,6 +502,14 @@ function datasetMetadata({ seasons, generatedAt, sourceFiles, sleeperFiles, play
         licenseUrl: NFLVERSE_LICENSE,
         attribution: "Data provided by nflverse. Underlying NFL data may be governed by its respective owners' terms.",
         files: sourceFiles,
+      },
+      nflverseRoster: {
+        name: "nflverse current-season roster",
+        season: rosterFile.season,
+        documentationUrl: NFLVERSE_ROSTER_DOCS,
+        licenseUrl: NFLVERSE_LICENSE,
+        usage: "Current roster eligibility, team, and roster status; used to exclude retired and stale Sleeper records.",
+        file: rosterFile,
       },
       sleeper: {
         name: "Sleeper NFL player directory",
@@ -393,7 +533,9 @@ export function validateAppDataset(dataset) {
   if (!Array.isArray(dataset?.seasons) || dataset.seasons.length < 2) errors.push("seasons are missing");
   if (!Number.isFinite(Date.parse(dataset?.generatedAt))) errors.push("generatedAt is invalid");
   if (!dataset?.sources?.nflverse?.files?.length) errors.push("nflverse source files are missing");
+  if (!dataset?.sources?.nflverseRoster?.file?.url) errors.push("nflverse current roster source is missing");
   if (!dataset?.sources?.sleeper?.files?.length) errors.push("Sleeper source files are missing");
+  const rosterSeason = dataset?.sources?.nflverseRoster?.season;
 
   for (const format of Object.keys(SCORING_FORMATS)) {
     for (const position of POSITIONS) {
@@ -408,6 +550,14 @@ export function validateAppDataset(dataset) {
 
   for (const position of POSITIONS) {
     const players = dataset?.players?.[position];
+    const excludedNames = dataset?.excludedPlayerNames?.[position];
+    if (
+      !Array.isArray(excludedNames)
+      || excludedNames.some((name) => typeof name !== "string" || !name.trim())
+      || new Set(excludedNames.map((name) => name.toLocaleLowerCase())).size !== excludedNames.length
+    ) {
+      errors.push(`${position} excluded player names are invalid`);
+    }
     if (!Array.isArray(players) || players.length < POSITION_DEPTHS[position] || players.length > MAX_PLAYERS_PER_POSITION) {
       errors.push(`${position} player directory has an invalid size`);
       continue;
@@ -420,10 +570,18 @@ export function validateAppDataset(dataset) {
         typeof player?.id !== "string"
         || !playerName
         || player.position !== position
+        || typeof player.team !== "string"
+        || !player.team
+        || player.rosterSeason !== rosterSeason
+        || isRetiredStatus(player.rosterStatus)
+        || player.active !== true
       ) errors.push(`${position} contains an invalid player`);
       if (ids.has(player.id)) errors.push(`${position} contains duplicate player ID ${player.id}`);
       const nameKey = playerName.toLocaleLowerCase();
       if (playerName && names.has(nameKey)) errors.push(`${position} contains duplicate player name ${playerName}`);
+      if (excludedNames?.some((name) => name.toLocaleLowerCase() === nameKey)) {
+        errors.push(`${position} includes excluded player ${playerName}`);
+      }
       ids.add(player.id);
       if (playerName) names.add(nameKey);
     }
@@ -491,6 +649,18 @@ async function collect({ seasons, outputDirectory }) {
     });
   }
 
+  const rosterSeason = currentRosterSeason(new Date(generatedAt));
+  const rosterUrl = nflverseRosterUrl(rosterSeason);
+  process.stdout.write(`Collecting nflverse ${rosterSeason} current roster eligibility...\n`);
+  const rosterCsv = await fetchWithRetry(rosterUrl);
+  const currentRoster = normalizeCurrentRoster(rosterCsv, rosterSeason);
+  const rosterFile = {
+    season: rosterSeason,
+    url: rosterUrl,
+    sha256: sha256(rosterCsv),
+    relevantPlayerRecords: currentRoster.length,
+  };
+
   process.stdout.write("Collecting Sleeper QB/RB/WR/TE player metadata...\n");
   const rawSleeper = {};
   const sleeperFiles = [];
@@ -505,12 +675,14 @@ async function collect({ seasons, outputDirectory }) {
       returnedRecords: Object.keys(payload).length,
     });
   }
-  const players = selectSleeperPlayers(rawSleeper);
+  const players = selectSleeperPlayers(rawSleeper, currentRoster);
+  const excludedPlayerNames = excludedSleeperPlayerNames(rawSleeper, players);
   const historical = buildHistoricalDataset(seasonRows, seasons);
   const metadata = datasetMetadata({
     seasons,
     generatedAt,
     sourceFiles,
+    rosterFile,
     sleeperFiles,
     players,
   });
@@ -519,6 +691,7 @@ async function collect({ seasons, outputDirectory }) {
     ...metadata,
     historicalPpg: historical.averages,
     players,
+    excludedPlayerNames,
   });
   const detailData = attachIntegrity({
     schemaVersion: metadata.schemaVersion,

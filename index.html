@@ -201,7 +201,7 @@
           <div id="datasetLinks" class="dataset-links" aria-label="Dataset sources"></div>
           <div class="callout callout-data">
             <strong>Reproducible local snapshot</strong>
-            <p><code>scripts/collect-data.mjs</code> downloads completed-season statistics from nflverse and current player metadata from Sleeper, validates both sources, and generates the local files used by this site. The browser never contacts either provider directly.</p>
+            <p><code>scripts/collect-data.mjs</code> downloads completed-season statistics and the current NFL roster from nflverse, then joins roster-eligible players to Sleeper fantasy metadata. Retired and stale teamless records are excluded before the local files are generated. The browser never contacts either provider directly.</p>
           </div>
         </article>
 
@@ -233,7 +233,7 @@
   </dialog>
 
   <footer class="site-footer">
-    <p>Runs entirely in your browser. Historical statistics: nflverse. Player directory: Sleeper. No account, tracking, or server-side data storage.</p>
+    <p>Runs entirely in your browser. Historical statistics and current roster eligibility: nflverse. Fantasy player metadata: Sleeper. No account, tracking, or server-side data storage.</p>
   </footer>
 </body>
 </html>

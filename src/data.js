@@ -17,7 +17,9 @@ async function readGeneratedDataset() {
     parsed?.schemaVersion !== 1
     || !parsed.historicalPpg?.ppr
     || !parsed.players?.QB
+    || !parsed.excludedPlayerNames?.QB
     || !parsed.sources?.nflverse
+    || !parsed.sources?.nflverseRoster
     || !parsed.sources?.sleeper
   ) {
     throw new Error("The generated calculator dataset has an unsupported schema.");
@@ -33,6 +35,7 @@ export const DEFAULT_SCORING_FORMAT = GENERATED_DATA.defaultScoringFormat;
 export const HISTORICAL_PPG_BY_FORMAT = Object.freeze(GENERATED_DATA.historicalPpg);
 export const HISTORICAL_PPG = Object.freeze(HISTORICAL_PPG_BY_FORMAT[DEFAULT_SCORING_FORMAT]);
 export const PLAYER_DIRECTORY = Object.freeze(GENERATED_DATA.players);
+export const EXCLUDED_PLAYER_NAMES = Object.freeze(GENERATED_DATA.excludedPlayerNames);
 
 export function historicalPpgFor(scoringFormat = DEFAULT_SCORING_FORMAT) {
   return HISTORICAL_PPG_BY_FORMAT[scoringFormat] ?? HISTORICAL_PPG;
@@ -40,10 +43,10 @@ export function historicalPpgFor(scoringFormat = DEFAULT_SCORING_FORMAT) {
 
 export const DATASET_META = Object.freeze({
   id: GENERATED_DATA.datasetId,
-  title: "Generated nflverse historical PPG and Sleeper player snapshot",
+  title: "Generated nflverse historical PPG and current-roster player snapshot",
   seasons: `${GENERATED_DATA.seasons[0]}–${GENERATED_DATA.seasons.at(-1)}`,
   scoringFormat: Object.values(SCORING_FORMATS).map((format) => format.label).join(", "),
-  source: "nflverse player statistics; Sleeper NFL player directory",
+  source: "nflverse player statistics and current roster; Sleeper fantasy metadata",
   aggregation: GENERATED_DATA.methodology.average,
   finishRank: GENERATED_DATA.methodology.finishRank,
   generatedAt: GENERATED_DATA.generatedAt,
@@ -56,6 +59,10 @@ export const DATASET_META = Object.freeze({
     {
       label: "nflverse update schedule",
       url: GENERATED_DATA.sources.nflverse.updateScheduleUrl,
+    },
+    {
+      label: "nflverse roster documentation",
+      url: GENERATED_DATA.sources.nflverseRoster.documentationUrl,
     },
     {
       label: "Sleeper API documentation",

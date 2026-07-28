@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { DEFAULT_PLAYER_POOL, POSITIONS } from "../src/data.js";
+import { DEFAULT_PLAYER_POOL, EXCLUDED_PLAYER_NAMES, POSITIONS } from "../src/data.js";
 import {
   createDefaultState,
   exportState,
@@ -98,6 +98,25 @@ test("normalization removes collection duplicates and duplicate slot ids", () =>
   assert.deepEqual(state.rankings.QB, ["Alpha"]);
   assert.deepEqual(state.pool.QB, ["Bravo"]);
   assert.notEqual(state.slots[0].id, state.slots[1].id);
+});
+
+test("normalization prunes stale generated players while preserving custom names", () => {
+  const position = POSITIONS.find((candidate) => EXCLUDED_PLAYER_NAMES[candidate].length);
+  const excludedName = EXCLUDED_PLAYER_NAMES[position][0];
+  const state = normalizeState({
+    rankings: { [position]: [excludedName, "Custom Prospect"] },
+    pool: { [position]: [excludedName, "Another Custom Prospect"] },
+    slots: [{
+      id: "stale-player",
+      pos: position,
+      player: { name: excludedName, position },
+    }],
+    settings: { teams: 12, flexRbShare: 50, scoringFormat: "ppr" },
+  });
+
+  assert.deepEqual(state.rankings[position], ["Custom Prospect"]);
+  assert.deepEqual(state.pool[position], ["Another Custom Prospect"]);
+  assert.equal(state.slots[0].player, null);
 });
 
 test("legacy browser keys migrate player strings and backfill the default pool", () => {

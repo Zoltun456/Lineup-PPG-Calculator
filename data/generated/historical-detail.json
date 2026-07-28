@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "datasetId": "nflverse-sleeper-2021-2025-v1",
-  "generatedAt": "2026-07-28T02:05:58.805Z",
+  "datasetId": "nflverse-sleeper-2021-2025-v2",
+  "generatedAt": "2026-07-28T11:07:19.126Z",
   "seasons": [
     2021,
     2022,
@@ -39,7 +39,7 @@
     "average": "The PPG values at each positional finish are averaged across 5 completed seasons.",
     "ties": "Ties in total points are resolved by PPG, then nflverse player ID.",
     "rankCapping": "Ranks beyond the generated positional depth use the last available rank.",
-    "sleeperPlayerFilter": "Active QB/RB/WR/TE players with Sleeper search rank 1-500, or an assigned team and depth-chart order 1-3."
+    "sleeperPlayerFilter": "Players must appear on the nflverse 2026 NFL roster, be active in Sleeper, and have Sleeper search rank 1-500 or depth-chart order 1-3. Teamless stale and retired Sleeper records are excluded."
   },
   "sources": {
     "nflverse": {
@@ -81,6 +81,19 @@
         }
       ]
     },
+    "nflverseRoster": {
+      "name": "nflverse current-season roster",
+      "season": 2026,
+      "documentationUrl": "https://nflreadr.nflverse.com/reference/dictionary_rosters.html",
+      "licenseUrl": "https://github.com/nflverse/nflverse-data/blob/master/LICENSE.md",
+      "usage": "Current roster eligibility, team, and roster status; used to exclude retired and stale Sleeper records.",
+      "file": {
+        "season": 2026,
+        "url": "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_2026.csv",
+        "sha256": "1723b34b4d613a11bd842e749b6786c80cef1a47bc7eb88c280ed42c0b062695",
+        "relevantPlayerRecords": 909
+      }
+    },
     "sleeper": {
       "name": "Sleeper NFL player directory",
       "documentationUrl": "https://docs.sleeper.com/",
@@ -96,19 +109,19 @@
         {
           "position": "RB",
           "url": "https://api.sleeper.app/v1/players/nfl?position=RB&active=true",
-          "sha256": "208652b869de76bff3fb5b87f1257ee476f218f6fd19708a98c277750514712c",
+          "sha256": "3233f3e359c3b85694affd955bbeea4754fb011bb16581fd29fce2b76779ba8b",
           "returnedRecords": 741
         },
         {
           "position": "WR",
           "url": "https://api.sleeper.app/v1/players/nfl?position=WR&active=true",
-          "sha256": "6cd7bebccccc9545925bc8af9a2c3b5d247315c10167c07259c47158508cf570",
+          "sha256": "1a80167b9e015251b82b5d412396b6481be828824dc92ec0dc0c8448d696386d",
           "returnedRecords": 1362
         },
         {
           "position": "TE",
           "url": "https://api.sleeper.app/v1/players/nfl?position=TE&active=true",
-          "sha256": "c4a33b94e624cc6d3a53712b213226e947baba11be54f79f0d955d928de6ba7b",
+          "sha256": "b2a040eb1e2fe8b03fde4442f12883325d761ed4a9cec4ed764dfba6bcf47742",
           "returnedRecords": 647
         }
       ]
@@ -21326,5 +21339,5 @@
       }
     }
   },
-  "integrity": "sha256-3bada0961d250876915785753a7c24067effbabaa656b944fe94a8a2b400419e"
+  "integrity": "sha256-dd4da19950adea72e52faa084e1730ce1ec36f34acecd0ebda36c84242a9db2c"
 }
