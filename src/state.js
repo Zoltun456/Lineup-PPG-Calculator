@@ -75,7 +75,7 @@ export function createDefaultState() {
       scoringFormat: DEFAULT_SCORING_FORMAT,
     },
     leagueId: "",
-    leagueSortMetric: "vor",
+    leagueSortMetric: "ppg",
   };
 }
 
@@ -191,7 +191,7 @@ export function normalizeState(candidate, options = {}) {
         : defaults.settings.scoringFormat,
     },
     leagueId: normalizeLeagueId(input.leagueId),
-    leagueSortMetric: input.leagueSortMetric === "ppg" ? "ppg" : "vor",
+    leagueSortMetric: input.leagueSortMetric === "vor" ? "vor" : "ppg",
   };
 }
 

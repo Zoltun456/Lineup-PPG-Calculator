@@ -137,6 +137,8 @@ export function pickStartingLineup(players, rankings, ppgData, baselines, slotCo
     totalVor,
     filledSlots: starters.length,
     totalSlots: starterSlots.length,
+    rankedPlayers: evaluated.filter((player) => player.ppg !== null).length,
+    totalPlayers: evaluated.length,
   };
 }
 

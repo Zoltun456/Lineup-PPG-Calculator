@@ -789,7 +789,9 @@ function renderLeague() {
         ]),
         createElement("span", {
           className: "league-team-note",
-          text: `${team.filledSlots}/${team.totalSlots} starting slots filled`,
+          text: ppgIsPrimary
+            ? `${team.filledSlots}/${team.totalSlots} starting slots filled`
+            : `${team.rankedPlayers}/${team.totalPlayers} roster players ranked`,
         }),
       ]),
       createElement("div", { className: "league-team-roster" }, [
