@@ -205,20 +205,28 @@ select:focus-visible,
 }
 
 .status-message {
-  position: sticky;
-  z-index: 20;
-  top: 10px;
-  width: min(620px, calc(100% - 16px));
-  margin: 10px auto;
-  padding: 10px 14px;
+  position: absolute;
+  z-index: 8;
+  top: 50%;
+  left: 58%;
+  width: min(32vw, 360px);
+  min-width: 180px;
+  margin: 0;
+  padding: 8px 12px;
+  overflow: hidden;
+  transform: translate(-50%, -50%);
   border: 1px solid #9bb7a7;
   border-radius: 9px;
   background: #edf6f0;
   color: var(--field-deep);
   box-shadow: 0 8px 24px -18px rgb(0 0 0 / 55%);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 600;
+  line-height: 1.35;
+  pointer-events: none;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card {
@@ -230,6 +238,7 @@ select:focus-visible,
 }
 
 .card-heading {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1169,6 +1178,17 @@ input[type="range"] {
     padding: 20px 17px 16px;
   }
 
+  .status-message {
+    top: 13px;
+    right: 13px;
+    left: auto;
+    width: min(43%, 180px);
+    min-width: 0;
+    padding: 6px 8px;
+    transform: none;
+    font-size: 0.64rem;
+  }
+
   .card-heading .toolbar,
   .segmented-control {
     margin-top: 15px;
@@ -1406,11 +1426,11 @@ input[type="range"] {
   @keyframes status-pop {
     from {
       opacity: 0;
-      transform: translateY(-10px) scale(0.97);
+      filter: blur(2px);
     }
     to {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      filter: blur(0);
     }
   }
 

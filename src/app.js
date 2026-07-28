@@ -152,9 +152,16 @@ function iconButton({ label, symbol, action, position, index, disabled = false, 
   }, symbol);
 }
 
+function placeStatus(tabName = activeTab) {
+  const host = document.querySelector(`#panel-${tabName} .card-heading`);
+  if (host && elements.status.parentElement !== host) host.append(elements.status);
+}
+
 function announce(message, { assertive = false } = {}) {
   clearTimeout(statusTimer);
+  placeStatus();
   elements.status.textContent = message;
+  elements.status.title = message;
   elements.status.setAttribute("aria-live", assertive ? "assertive" : "polite");
   elements.status.hidden = false;
   elements.status.classList.remove("is-showing");
@@ -233,6 +240,7 @@ function setActiveTab(tabName, { focus = false } = {}) {
       panel.classList.add("is-entering");
     }
   });
+  if (!elements.status.hidden) placeStatus(tabName);
   if (location.hash !== `#${tabName}`) {
     history.replaceState(null, "", `#${tabName}`);
   }

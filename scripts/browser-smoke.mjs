@@ -371,6 +371,59 @@ try {
   if (scrollingList) {
     throw new Error(`Hover created horizontal list scrolling: ${JSON.stringify(scrollingList)}`);
   }
+  const statusPlacement = await evaluate(client, `(() => {
+    const panel = document.querySelector('#panel-rankings');
+    const heading = panel.querySelector('.card-heading');
+    const title = heading.querySelector('h2');
+    const toolbar = heading.querySelector('.toolbar');
+    const status = document.querySelector('#status');
+    const headingRect = heading.getBoundingClientRect();
+    const titleRange = document.createRange();
+    titleRange.selectNodeContents(title);
+    const titleRect = titleRange.getBoundingClientRect();
+    const toolbarRect = toolbar.getBoundingClientRect();
+    const statusRect = status.getBoundingClientRect();
+    const visibleLayout = {
+      headingHeight: headingRect.height,
+      panelTop: panel.getBoundingClientRect().top,
+      documentHeight: document.documentElement.scrollHeight
+    };
+    status.hidden = true;
+    const hiddenLayout = {
+      headingHeight: heading.getBoundingClientRect().height,
+      panelTop: panel.getBoundingClientRect().top,
+      documentHeight: document.documentElement.scrollHeight
+    };
+    status.hidden = false;
+    return {
+      parentIsHeading: status.parentElement === heading,
+      position: getComputedStyle(status).position,
+      rightOfTitle: statusRect.left >= titleRect.right + 8,
+      beforeToolbar: statusRect.right <= toolbarRect.left - 8,
+      verticallyContained: statusRect.top >= headingRect.top && statusRect.bottom <= headingRect.bottom,
+      horizontalBounds: {
+        titleRight: titleRect.right,
+        statusLeft: statusRect.left,
+        statusRight: statusRect.right,
+        toolbarLeft: toolbarRect.left
+      },
+      layoutShift: {
+        headingHeight: Math.abs(visibleLayout.headingHeight - hiddenLayout.headingHeight),
+        panelTop: Math.abs(visibleLayout.panelTop - hiddenLayout.panelTop),
+        documentHeight: Math.abs(visibleLayout.documentHeight - hiddenLayout.documentHeight)
+      }
+    };
+  })()`);
+  if (
+    !statusPlacement.parentIsHeading
+    || statusPlacement.position !== "absolute"
+    || !statusPlacement.rightOfTitle
+    || !statusPlacement.beforeToolbar
+    || !statusPlacement.verticallyContained
+    || Object.values(statusPlacement.layoutShift).some((difference) => difference > 0.5)
+  ) {
+    throw new Error(`Status toast placement failed: ${JSON.stringify(statusPlacement)}`);
+  }
   await client.send("Emulation.setDeviceMetricsOverride", {
     width: 375,
     height: 900,
@@ -469,7 +522,7 @@ try {
 
   process.stdout.write(
     "Browser smoke test passed: 375px rankings/lineup/settings, full-row mouse and touch drag, "
-      + "motion feedback, hover overflow regression, PPR and Standard calculations, "
+      + "motion feedback, non-shifting header toast, hover overflow regression, PPR and Standard calculations, "
       + "source disclosure, local-only requests, "
       + "and zero runtime exceptions.\n",
   );
