@@ -26,6 +26,15 @@ const DEFAULT_OUTPUT_DIRECTORY = resolve("data", "generated");
 const DEFAULT_SEASON_COUNT = 5;
 const SLEEPER_RELEVANCE_RANK = 500;
 const SLEEPER_DEPTH_LIMIT = 3;
+// Rostered players get corroborated by nflverse's roster snapshot, so a generous search-rank
+// bar is safe. A player with no current team has no such corroboration, so free agents use a
+// tighter bar to reduce the odds of a quietly-retired player slipping back in.
+const FREE_AGENT_RELEVANCE_RANK = 300;
+// Sleeper's `active` flag lags behind real retirements (e.g. a legendary veteran can still show
+// active years after their actual final game). Age/experience catch what search rank alone
+// doesn't: real recently-cut free agents top out well under these figures.
+const FREE_AGENT_MAX_YEARS_EXPERIENCE = 15;
+const FREE_AGENT_MAX_AGE = 36;
 const MAX_PLAYERS_PER_POSITION = 500;
 const FETCH_TIMEOUT_MS = 30_000;
 const FETCH_ATTEMPTS = 3;
@@ -374,17 +383,32 @@ export function selectSleeperPlayers(rawByPosition, currentRoster) {
       const name = sleeperName(player);
       const searchRank = numberOrNull(player.search_rank);
       const depthChartOrder = numberOrNull(player.depth_chart_order);
-      const rosterPlayer = bySleeperId.get(player.player_id)
+      const matchedRosterPlayer = bySleeperId.get(player.player_id)
         ?? byGsisId.get(player.gsis_id)
         ?? byName.get(`${position}:${normalizedPlayerName(name)}`);
-      const isRelevant = (
-        (searchRank !== null && searchRank > 0 && searchRank <= SLEEPER_RELEVANCE_RANK)
-        || (depthChartOrder !== null && depthChartOrder <= SLEEPER_DEPTH_LIMIT)
+      const rosterPlayer = matchedRosterPlayer?.position === position ? matchedRosterPlayer : null;
+      const age = numberOrNull(player.age);
+      const yearsExperience = numberOrNull(player.years_exp);
+      // A rostered player is corroborated by nflverse, so depth-chart order alone can also
+      // signal relevance. A free agent has no team, so it's judged on search rank against a
+      // tighter bar, plus an age/experience sanity cap: Sleeper's `active` flag can lag behind
+      // a real retirement for years, and search rank alone doesn't catch that.
+      const isPlausiblyActiveFreeAgent = (
+        (yearsExperience === null || yearsExperience <= FREE_AGENT_MAX_YEARS_EXPERIENCE)
+        && (age === null || age <= FREE_AGENT_MAX_AGE)
       );
+      const isRelevant = rosterPlayer
+        ? (
+          (searchRank !== null && searchRank > 0 && searchRank <= SLEEPER_RELEVANCE_RANK)
+          || (depthChartOrder !== null && depthChartOrder <= SLEEPER_DEPTH_LIMIT)
+        )
+        : (
+          searchRank !== null && searchRank > 0 && searchRank <= FREE_AGENT_RELEVANCE_RANK
+          && isPlausiblyActiveFreeAgent
+        );
       if (
         player.active !== true
         || player.position !== position
-        || rosterPlayer?.position !== position
         || isRetiredStatus(rosterPlayer?.status)
         || !name
         || !isRelevant
@@ -396,22 +420,22 @@ export function selectSleeperPlayers(rawByPosition, currentRoster) {
         sleeperId: player.player_id,
         gsisId: typeof player.gsis_id === "string" && player.gsis_id
           ? player.gsis_id
-          : rosterPlayer.gsisId,
-        name: rosterPlayer.name,
+          : rosterPlayer?.gsisId ?? null,
+        name: rosterPlayer?.name ?? name,
         firstName: typeof player.first_name === "string" ? player.first_name : null,
         lastName: typeof player.last_name === "string" ? player.last_name : null,
         position,
-        team: rosterPlayer.team,
+        team: rosterPlayer?.team ?? null,
         status: typeof player.status === "string" ? player.status : null,
-        rosterStatus: rosterPlayer.status,
-        rosterSeason: rosterPlayer.season,
+        rosterStatus: rosterPlayer?.status ?? null,
+        rosterSeason: rosterPlayer?.season ?? null,
         injuryStatus: typeof player.injury_status === "string" ? player.injury_status : null,
         active: true,
-        yearsExperience: numberOrNull(player.years_exp) ?? rosterPlayer.yearsExperience,
+        yearsExperience: numberOrNull(player.years_exp) ?? rosterPlayer?.yearsExperience ?? null,
         age: numberOrNull(player.age),
         depthChartOrder,
         searchRank,
-        jerseyNumber: numberOrNull(player.number) ?? rosterPlayer.jerseyNumber,
+        jerseyNumber: numberOrNull(player.number) ?? rosterPlayer?.jerseyNumber ?? null,
       }];
     });
 
@@ -492,7 +516,7 @@ function datasetMetadata({
       average: `The PPG values at each positional finish are averaged across ${seasons.length} completed seasons.`,
       ties: "Ties in total points are resolved by PPG, then nflverse player ID.",
       rankCapping: "Ranks beyond the generated positional depth use the last available rank.",
-      sleeperPlayerFilter: `Players must appear on the nflverse ${rosterFile.season} NFL roster, be active in Sleeper, and have Sleeper search rank 1-${SLEEPER_RELEVANCE_RANK} or depth-chart order 1-${SLEEPER_DEPTH_LIMIT}. Teamless stale and retired Sleeper records are excluded.`,
+      sleeperPlayerFilter: `Players must be active in Sleeper and not retired. Those on the nflverse ${rosterFile.season} NFL roster need Sleeper search rank 1-${SLEEPER_RELEVANCE_RANK} or depth-chart order 1-${SLEEPER_DEPTH_LIMIT}; free agents with no current team need search rank 1-${FREE_AGENT_RELEVANCE_RANK} and no more than ${FREE_AGENT_MAX_YEARS_EXPERIENCE} years of experience or age ${FREE_AGENT_MAX_AGE}, since Sleeper's active flag can lag behind a real retirement. Stale and retired Sleeper records are excluded.`,
     },
     sources: {
       nflverse: {
@@ -566,13 +590,13 @@ export function validateAppDataset(dataset) {
     const names = new Set();
     for (const player of players) {
       const playerName = typeof player?.name === "string" ? player.name : "";
+      const hasTeam = typeof player?.team === "string" && player.team;
+      const isFreeAgent = player?.team === null && player?.rosterSeason === null;
       if (
         typeof player?.id !== "string"
         || !playerName
         || player.position !== position
-        || typeof player.team !== "string"
-        || !player.team
-        || player.rosterSeason !== rosterSeason
+        || !(hasTeam ? player.rosterSeason === rosterSeason : isFreeAgent)
         || isRetiredStatus(player.rosterStatus)
         || player.active !== true
       ) errors.push(`${position} contains an invalid player`);

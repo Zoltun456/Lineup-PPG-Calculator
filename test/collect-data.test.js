@@ -28,7 +28,7 @@ test("current roster season follows the NFL offseason boundary", () => {
   assert.equal(currentRosterSeason(new Date("2026-01-15T12:00:00Z")), 2025);
 });
 
-test("Sleeper selection requires a current roster match and excludes retired records", () => {
+test("Sleeper selection requires a current roster match or free-agent relevance, and excludes retired records", () => {
   const player = {
     player_id: "1",
     gsis_id: "00-1",
@@ -39,7 +39,6 @@ test("Sleeper selection requires a current roster match and excludes retired rec
     active: true,
     search_rank: 12,
     depth_chart_order: 1,
-    team: "BUF",
   };
   const inactive = { ...player, player_id: "2", full_name: "Inactive", active: false };
   const irrelevant = {
@@ -49,19 +48,40 @@ test("Sleeper selection requires a current roster match and excludes retired rec
     search_rank: 999,
     depth_chart_order: 8,
   };
-  const retired = {
-    ...player,
-    player_id: "4",
-    gsis_id: "00-4",
-    full_name: "Retired Star",
-    team: null,
-    search_rank: 1,
-  };
   const rosterRetired = {
-    ...retired,
+    ...player,
     player_id: "5",
     gsis_id: "00-5",
     full_name: "Ceremonial Retiree",
+    search_rank: 1,
+  };
+  const freeAgent = {
+    ...player,
+    player_id: "6",
+    gsis_id: "00-6",
+    full_name: "Available Veteran",
+    search_rank: 50,
+    depth_chart_order: null,
+  };
+  const obscureFreeAgent = {
+    ...player,
+    player_id: "7",
+    gsis_id: "00-7",
+    full_name: "Long Shot",
+    search_rank: 400,
+    depth_chart_order: null,
+  };
+  // Mirrors a real case: Sleeper's `active` flag stayed true for a legendary veteran years
+  // after their actual final game, with a search rank still well inside the free-agent bar.
+  const staleLegend = {
+    ...player,
+    player_id: "8",
+    gsis_id: "00-8",
+    full_name: "Old Legend",
+    search_rank: 187,
+    depth_chart_order: null,
+    age: 38,
+    years_exp: 17,
   };
   const currentRoster = [
     {
@@ -104,18 +124,31 @@ test("Sleeper selection requires a current roster match and excludes retired rec
     },
   ];
   const rawByPosition = {
-    QB: { 1: player, 2: inactive, 3: irrelevant, 4: retired, 5: rosterRetired },
+    QB: {
+      1: player,
+      2: inactive,
+      3: irrelevant,
+      5: rosterRetired,
+      6: freeAgent,
+      7: obscureFreeAgent,
+      8: staleLegend,
+    },
   };
   const selected = selectSleeperPlayers(rawByPosition, currentRoster);
   const excluded = excludedSleeperPlayerNames(rawByPosition, selected);
+  const selectedNames = selected.QB.map((entry) => entry.name).sort();
 
-  assert.equal(selected.QB.length, 1);
-  assert.equal(selected.QB[0].id, "sleeper:1");
-  assert.equal(selected.QB[0].gsisId, "00-1");
-  assert.equal(selected.QB[0].team, "BUF");
-  assert.equal(selected.QB[0].rosterStatus, "ACT");
-  assert.equal(selected.QB[0].rosterSeason, 2026);
-  assert.deepEqual(excluded.QB, ["Ceremonial Retiree", "Retired Star"]);
+  assert.deepEqual(selectedNames, ["Available Veteran", "Example Player"]);
+  const rostered = selected.QB.find((entry) => entry.name === "Example Player");
+  assert.equal(rostered.gsisId, "00-1");
+  assert.equal(rostered.team, "BUF");
+  assert.equal(rostered.rosterStatus, "ACT");
+  assert.equal(rostered.rosterSeason, 2026);
+  const agent = selected.QB.find((entry) => entry.name === "Available Veteran");
+  assert.equal(agent.team, null);
+  assert.equal(agent.rosterSeason, null);
+  assert.equal(agent.rosterStatus, null);
+  assert.deepEqual(excluded.QB, ["Ceremonial Retiree", "Long Shot", "Old Legend"]);
   assert.deepEqual(selected.RB, []);
 });
 

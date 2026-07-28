@@ -129,8 +129,11 @@ function normalizePlayerCollections(inputRankings, inputPool, { backfillDefaults
   const pool = {};
 
   for (const position of POSITIONS) {
+    // A player leaving the bundled pool (e.g. becoming a free agent, or genuinely retiring)
+    // should stop being offered to new users, but must never silently erase a ranking someone
+    // already saved — that's the user's own data, not the app's to prune.
     const isEligible = (name) => !EXCLUDED_NAME_KEYS[position].has(name.toLocaleLowerCase());
-    rankings[position] = uniqueStrings(inputRankings?.[position]).filter(isEligible);
+    rankings[position] = uniqueStrings(inputRankings?.[position]);
     const rankedNames = new Set(rankings[position].map((name) => name.toLocaleLowerCase()));
     pool[position] = uniqueStrings(inputPool?.[position])
       .filter(isEligible)
@@ -167,12 +170,6 @@ export function normalizeState(candidate, options = {}) {
   slots.forEach((slot, index) => {
     if (slotIds.has(slot.id)) slot.id = createSlotId(index);
     slotIds.add(slot.id);
-    if (
-      slot.player
-      && EXCLUDED_NAME_KEYS[slot.player.position].has(slot.player.name.toLocaleLowerCase())
-    ) {
-      slot.player = null;
-    }
   });
 
   return {

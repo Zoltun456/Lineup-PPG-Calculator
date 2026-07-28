@@ -16,7 +16,7 @@ Files in [`generated/`](generated/) are produced by [`scripts/collect-data.mjs`]
 - Sleeper position-filtered NFL player directory:
   `https://api.sleeper.app/v1/players/nfl?position=<POSITION>&active=true`
 
-The player directory only retains Sleeper records that match the current nflverse roster and do not carry a retired roster status. This prevents retired and stale teamless records from entering the generated pool. The runtime file also includes the previously relevant Sleeper names it excluded so saved browser state can remove stale bundled entries without removing unrelated custom players. The exact source URLs and SHA-256 hashes for a generated snapshot are embedded in both JSON files.
+The player directory retains active, non-retired Sleeper records: players on the current nflverse roster need a generous Sleeper search rank or depth-chart order, and free agents with no current team (matched by Sleeper's own relevance data alone, with no roster to corroborate them) need a tighter search rank. This keeps genuinely active free agents in the pool while filtering out stale and retired records. The runtime file also includes the previously relevant Sleeper names it excluded so saved browser state can remove stale bundled entries from the default pool without removing unrelated custom players; a player's own saved rankings are never auto-removed this way. The exact source URLs and SHA-256 hashes for a generated snapshot are embedded in both JSON files.
 
 ## Refresh and validation
 

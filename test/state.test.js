@@ -100,7 +100,7 @@ test("normalization removes collection duplicates and duplicate slot ids", () =>
   assert.notEqual(state.slots[0].id, state.slots[1].id);
 });
 
-test("normalization prunes stale generated players while preserving custom names", () => {
+test("normalization prunes excluded names from the pool but preserves existing rankings and lineup slots", () => {
   const position = POSITIONS.find((candidate) => EXCLUDED_PLAYER_NAMES[candidate].length);
   const excludedName = EXCLUDED_PLAYER_NAMES[position][0];
   const state = normalizeState({
@@ -114,9 +114,11 @@ test("normalization prunes stale generated players while preserving custom names
     settings: { teams: 12, flexRbShare: 50, scoringFormat: "ppr" },
   });
 
-  assert.deepEqual(state.rankings[position], ["Custom Prospect"]);
+  // A player dropping off the bundled pool (e.g. hitting free agency) shouldn't silently erase
+  // a user's own saved ranking or lineup slot; only the default/backfilled pool prunes them.
+  assert.deepEqual(state.rankings[position], [excludedName, "Custom Prospect"]);
   assert.deepEqual(state.pool[position], ["Another Custom Prospect"]);
-  assert.equal(state.slots[0].player, null);
+  assert.deepEqual(state.slots[0].player, { name: excludedName, position });
 });
 
 test("legacy browser keys migrate player strings and backfill the default pool", () => {
