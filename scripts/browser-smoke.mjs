@@ -483,8 +483,8 @@ try {
     throw new Error(`Expected interactive PPG total of ${expectedQb1Ppg}; received ${totalPpg}.`);
   }
 
-  await evaluate(client, "location.hash = '#settings'");
-  await waitForValue(client, "document.querySelector('#panel-settings').hidden === false");
+  await evaluate(client, "document.getElementById('settingsButton').click()");
+  await waitForValue(client, "document.getElementById('settingsDialog').open === true");
   const settingsMobile = await measure();
   if (settingsMobile.documentWidth > 375 || settingsMobile.bodyWidth > 375) {
     throw new Error(`Settings overflow at 375px: ${JSON.stringify(settingsMobile)}`);
@@ -501,9 +501,11 @@ try {
     const select = document.querySelector('#scoringFormatSelect');
     select.value = 'standard';
     select.dispatchEvent(new Event('change', { bubbles: true }));
-    location.hash = '#lineup';
+    document.getElementById('settingsCloseButton').click();
     return true;
   })()`);
+  await waitForValue(client, "document.getElementById('settingsDialog').open === false");
+  await evaluate(client, "location.hash = '#lineup'");
   await waitForValue(client, "document.querySelector('#panel-lineup').hidden === false");
   const standardTotal = Number(await evaluate(client, "document.querySelector('#totalPpg').textContent"));
   if (standardTotal !== expectedStandardQb1Ppg) {
