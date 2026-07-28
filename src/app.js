@@ -54,7 +54,10 @@ let activeTab = ["rankings", "lineup", "settings"].includes(location.hash.slice(
   ? location.hash.slice(1)
   : "rankings";
 let dragPayload = null;
+let pointerDrag = null;
+let activeViewTransition = null;
 let statusTimer = null;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const searchTerms = Object.fromEntries(POSITIONS.map((position) => [position, ""]));
 const playerMetadata = new Map(POSITIONS.flatMap((position) => (
   PLAYER_DIRECTORY[position].map((player) => [
@@ -92,6 +95,48 @@ function createElement(tagName, attributes = {}, children = []) {
   return element;
 }
 
+function motionName(prefix, value) {
+  let hash = 2166136261;
+  for (const character of String(value)) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${prefix}-${(hash >>> 0).toString(36)}`;
+}
+
+function renderWithMotion() {
+  if (reducedMotion.matches || typeof document.startViewTransition !== "function") {
+    renderAll();
+    return;
+  }
+  activeViewTransition?.skipTransition?.();
+  let transition;
+  try {
+    transition = document.startViewTransition(() => renderAll());
+  } catch {
+    activeViewTransition = null;
+    renderAll();
+    return;
+  }
+  activeViewTransition = transition;
+  transition.finished
+    .catch(() => {})
+    .finally(() => {
+      if (activeViewTransition === transition) activeViewTransition = null;
+    });
+}
+
+function pulseValue(element, value) {
+  const changed = element.textContent !== value;
+  element.textContent = value;
+  if (!changed || reducedMotion.matches || !document.documentElement.classList.contains("motion-ready")) {
+    return;
+  }
+  element.classList.remove("is-updating");
+  void element.offsetWidth;
+  element.classList.add("is-updating");
+}
+
 function iconButton({ label, symbol, action, position, index, disabled = false, className = "" }) {
   return createElement("button", {
     type: "button",
@@ -112,8 +157,12 @@ function announce(message, { assertive = false } = {}) {
   elements.status.textContent = message;
   elements.status.setAttribute("aria-live", assertive ? "assertive" : "polite");
   elements.status.hidden = false;
+  elements.status.classList.remove("is-showing");
+  void elements.status.offsetWidth;
+  elements.status.classList.add("is-showing");
   statusTimer = setTimeout(() => {
     elements.status.hidden = true;
+    elements.status.classList.remove("is-showing");
   }, 5000);
 }
 
@@ -131,7 +180,7 @@ function commit(message, mutator, { render = true } = {}) {
   mutator(state);
   state = normalizeState(state);
   persist();
-  if (render) renderAll();
+  if (render) renderWithMotion();
   announce(message);
 }
 
@@ -140,7 +189,7 @@ function undo() {
   if (!previous) return;
   state = normalizeState(previous);
   persist();
-  renderAll();
+  renderWithMotion();
   announce("Last change undone.");
 }
 
@@ -167,6 +216,7 @@ function positionLabel(position) {
 
 function setActiveTab(tabName, { focus = false } = {}) {
   if (!["rankings", "lineup", "settings"].includes(tabName)) return;
+  const changed = activeTab !== tabName;
   activeTab = tabName;
   document.querySelectorAll('[role="tab"]').forEach((tab) => {
     const selected = tab.dataset.tab === tabName;
@@ -177,6 +227,11 @@ function setActiveTab(tabName, { focus = false } = {}) {
   });
   document.querySelectorAll('[role="tabpanel"]').forEach((panel) => {
     panel.hidden = panel.id !== `panel-${tabName}`;
+    if (!panel.hidden && changed && !reducedMotion.matches) {
+      panel.classList.remove("is-entering");
+      void panel.offsetWidth;
+      panel.classList.add("is-entering");
+    }
   });
   if (location.hash !== `#${tabName}`) {
     history.replaceState(null, "", `#${tabName}`);
@@ -216,7 +271,6 @@ function renderRankings() {
         const handle = createElement("button", {
           type: "button",
           className: "drag-handle rank-drag-handle",
-          draggable: true,
           "aria-label": `Drag ${name} to reorder`,
           title: "Drag to reorder",
           dataset: { position, index: String(index) },
@@ -254,6 +308,8 @@ function renderRankings() {
             className: "remove-button",
           }),
         ]);
+        item.style.viewTransitionName = motionName("player", `${position}|${name}`);
+        item.style.setProperty("--item-index", String(index));
         rankList.append(item);
       });
     }
@@ -276,7 +332,7 @@ function renderRankings() {
       visiblePlayers.forEach((name) => {
         const originalIndex = state.pool[position].indexOf(name);
         const metadata = metadataFor(position, name);
-        poolList.append(createElement("div", {
+        const item = createElement("div", {
           className: "pool-item",
           draggable: true,
           dataset: { position, index: String(originalIndex) },
@@ -299,7 +355,9 @@ function renderRankings() {
             "aria-label": `Add ${name} to the end of ${position} rankings`,
             dataset: { action: "pool-add", position, index: String(originalIndex) },
           }),
-        ]));
+        ]);
+        item.style.setProperty("--item-index", String(originalIndex));
+        poolList.append(item);
       });
     }
 
@@ -425,7 +483,6 @@ function renderLineup() {
     const handle = createElement("button", {
       type: "button",
       className: "drag-handle slot-drag-handle",
-      draggable: true,
       "aria-label": `Drag lineup slot ${index + 1} to reorder`,
       title: "Drag to reorder",
       dataset: { index: String(index) },
@@ -488,6 +545,8 @@ function renderLineup() {
     ]);
 
     row.append(handle, positionField, entryField, ppgMetric, vorMetric, actions);
+    row.style.viewTransitionName = motionName("slot", slot.id);
+    row.style.setProperty("--item-index", String(index));
     if (rowResult.status === "duplicate") {
       row.append(createElement("p", {
         className: "row-message",
@@ -523,12 +582,13 @@ function renderLineup() {
       className: "baseline-chip",
       text: `${position} ${label}`,
       title,
+      dataset: { position },
     });
   });
   elements.baselineSummary.replaceChildren(...baselineChips);
   elements.baselineLabel.textContent = `Replacement ranks · ${SCORING_FORMATS[state.settings.scoringFormat].label}`;
-  elements.totalPpg.textContent = result.totalPpg.toFixed(1);
-  elements.totalVor.textContent = result.totalVor.toFixed(1);
+  pulseValue(elements.totalPpg, result.totalPpg.toFixed(1));
+  pulseValue(elements.totalVor, result.totalVor.toFixed(1));
   document.querySelectorAll('input[name="lineupMode"]').forEach((input) => {
     input.checked = input.value === mode;
   });
@@ -655,6 +715,200 @@ function clearDropIndicators() {
   });
 }
 
+function stripCloneSemantics(element) {
+  element.removeAttribute("id");
+  element.removeAttribute("role");
+  element.removeAttribute("aria-label");
+  element.querySelectorAll("[id], [role], [aria-label]").forEach((child) => {
+    child.removeAttribute("id");
+    child.removeAttribute("role");
+    child.removeAttribute("aria-label");
+  });
+  element.querySelectorAll("button, input, select, a").forEach((control) => {
+    control.tabIndex = -1;
+  });
+}
+
+function activatePointerDrag() {
+  if (!pointerDrag || pointerDrag.active) return;
+  const rect = pointerDrag.source.getBoundingClientRect();
+  const preview = pointerDrag.source.cloneNode(true);
+  stripCloneSemantics(preview);
+  preview.classList.remove("is-dragging", "drop-before", "drop-after");
+  preview.classList.add("drag-preview");
+  preview.setAttribute("aria-hidden", "true");
+  Object.assign(preview.style, {
+    position: "fixed",
+    zIndex: "1000",
+    top: `${rect.top}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    margin: "0",
+    pointerEvents: "none",
+    viewTransitionName: "none",
+  });
+  document.body.append(preview);
+
+  pointerDrag.active = true;
+  pointerDrag.preview = preview;
+  pointerDrag.distance = rect.height;
+  pointerDrag.source.classList.add("is-dragging", "drag-placeholder");
+  pointerDrag.parent.classList.add("has-active-drag");
+  document.body.classList.add("is-pointer-dragging");
+}
+
+function autoScrollForDrag(clientY) {
+  if (!pointerDrag?.active) return;
+  const scrollParent = pointerDrag.parent;
+  if (scrollParent.scrollHeight > scrollParent.clientHeight + 1) {
+    const rect = scrollParent.getBoundingClientRect();
+    const edge = Math.min(42, rect.height / 4);
+    if (clientY < rect.top + edge) scrollParent.scrollTop -= 12;
+    if (clientY > rect.bottom - edge) scrollParent.scrollTop += 12;
+    return;
+  }
+  const viewportEdge = 72;
+  if (clientY < viewportEdge) window.scrollBy(0, -14);
+  if (clientY > window.innerHeight - viewportEdge) window.scrollBy(0, 14);
+}
+
+function updatePointerDropTarget(clientX, clientY) {
+  if (!pointerDrag?.active) return;
+  const parentRect = pointerDrag.parent.getBoundingClientRect();
+  if (
+    clientX < parentRect.left - 24
+    || clientX > parentRect.right + 24
+    || clientY < parentRect.top - 36
+    || clientY > parentRect.bottom + 36
+  ) return;
+
+  const items = pointerDrag.items;
+  const candidates = items.filter((item) => item !== pointerDrag.source);
+  let targetIndex = candidates.length;
+  for (let index = 0; index < candidates.length; index += 1) {
+    const rect = candidates[index].getBoundingClientRect();
+    const unshiftedMidpoint = rect.top + rect.height / 2
+      - Number.parseFloat(candidates[index].style.getPropertyValue("--drag-shift") || "0");
+    if (clientY < unshiftedMidpoint) {
+      targetIndex = index;
+      break;
+    }
+  }
+  pointerDrag.targetIndex = targetIndex;
+
+  const shiftDistance = pointerDrag.distance;
+  items.forEach((item, index) => {
+    let shift = 0;
+    if (targetIndex < pointerDrag.fromIndex && index >= targetIndex && index < pointerDrag.fromIndex) {
+      shift = shiftDistance;
+    } else if (
+      targetIndex > pointerDrag.fromIndex
+      && index > pointerDrag.fromIndex
+      && index <= targetIndex
+    ) {
+      shift = -shiftDistance;
+    }
+    item.style.setProperty("--drag-shift", `${shift}px`);
+    item.classList.toggle("is-drag-shifting", shift !== 0);
+    item.classList.remove("drop-before", "drop-after");
+  });
+
+  const marker = candidates[targetIndex] ?? candidates.at(-1);
+  if (marker) marker.classList.add(targetIndex < candidates.length ? "drop-before" : "drop-after");
+}
+
+function beginPointerReorder(event, {
+  source,
+  parent,
+  itemSelector,
+  fromIndex,
+  onDrop,
+}) {
+  if (
+    pointerDrag
+    || !event.isPrimary
+    || (event.pointerType === "mouse" && event.button !== 0)
+    || !source
+    || !parent
+  ) return;
+  const handle = event.currentTarget?.contains(event.target)
+    ? event.target.closest(".drag-handle")
+    : null;
+  if (!handle) return;
+
+  pointerDrag = {
+    pointerId: event.pointerId,
+    handle,
+    source,
+    parent,
+    items: [...parent.querySelectorAll(itemSelector)],
+    fromIndex,
+    targetIndex: fromIndex,
+    startX: event.clientX,
+    startY: event.clientY,
+    currentX: event.clientX,
+    currentY: event.clientY,
+    active: false,
+    preview: null,
+    onDrop,
+  };
+  handle.setPointerCapture?.(event.pointerId);
+}
+
+function movePointerReorder(event) {
+  if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return;
+  pointerDrag.currentX = event.clientX;
+  pointerDrag.currentY = event.clientY;
+  const deltaX = event.clientX - pointerDrag.startX;
+  const deltaY = event.clientY - pointerDrag.startY;
+  if (!pointerDrag.active && Math.hypot(deltaX, deltaY) < 5) return;
+
+  event.preventDefault();
+  activatePointerDrag();
+  const tilt = Math.max(-1.5, Math.min(1.5, deltaX / 100));
+  pointerDrag.preview.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) rotate(${tilt}deg) scale(1.018)`;
+  autoScrollForDrag(event.clientY);
+  updatePointerDropTarget(event.clientX, event.clientY);
+}
+
+function finishPointerReorder(event, { cancelled = false } = {}) {
+  if (!pointerDrag || (event?.pointerId !== undefined && event.pointerId !== pointerDrag.pointerId)) return;
+  const currentDrag = pointerDrag;
+  pointerDrag = null;
+  currentDrag.handle.releasePointerCapture?.(currentDrag.pointerId);
+  if (currentDrag.active) event?.preventDefault();
+
+  currentDrag.items.forEach((item) => {
+    item.classList.remove(
+      "is-dragging",
+      "drag-placeholder",
+      "is-drag-shifting",
+      "drop-before",
+      "drop-after",
+    );
+    item.style.removeProperty("--drag-shift");
+  });
+  currentDrag.parent.classList.remove("has-active-drag");
+  document.body.classList.remove("is-pointer-dragging");
+
+  if (currentDrag.preview) {
+    currentDrag.preview.classList.add(
+      cancelled || currentDrag.targetIndex === currentDrag.fromIndex
+        ? "is-returning"
+        : "is-releasing",
+    );
+    if (cancelled || currentDrag.targetIndex === currentDrag.fromIndex) {
+      currentDrag.preview.style.transform = "translate3d(0, 0, 0) rotate(0) scale(1)";
+    }
+    setTimeout(() => currentDrag.preview.remove(), 190);
+  }
+
+  if (!cancelled && currentDrag.active && currentDrag.targetIndex !== currentDrag.fromIndex) {
+    currentDrag.onDrop(currentDrag.targetIndex);
+  }
+}
+
 function reorderRankedPlayer(position, fromIndex, toIndex) {
   if (fromIndex === toIndex) return;
   const name = state.rankings[position][fromIndex];
@@ -738,29 +992,45 @@ elements.rankGrid.addEventListener("keydown", (event) => {
   }
 });
 
+elements.rankGrid.addEventListener("pointerdown", (event) => {
+  const handle = event.target.closest(".rank-drag-handle");
+  if (!handle) return;
+  const source = handle.closest(".rank-item");
+  const parent = source?.closest(".rank-list");
+  const position = handle.dataset.position;
+  const fromIndex = Number(handle.dataset.index);
+  beginPointerReorder(event, {
+    source,
+    parent,
+    itemSelector: ".rank-item",
+    fromIndex,
+    onDrop: (targetIndex) => reorderRankedPlayer(position, fromIndex, targetIndex),
+  });
+});
+
 elements.rankGrid.addEventListener("dragstart", (event) => {
-  const rankHandle = event.target.closest(".rank-drag-handle");
   const poolItem = event.target.closest(".pool-item");
-  if (rankHandle) {
-    dragPayload = {
-      type: "rank",
-      position: rankHandle.dataset.position,
-      index: Number(rankHandle.dataset.index),
-    };
-    rankHandle.closest(".rank-item")?.classList.add("is-dragging");
-  } else if (poolItem) {
+  if (poolItem) {
     dragPayload = {
       type: "pool",
       position: poolItem.dataset.position,
       index: Number(poolItem.dataset.index),
     };
     poolItem.classList.add("is-dragging");
+    if (event.dataTransfer) {
+      const rect = poolItem.getBoundingClientRect();
+      event.dataTransfer.setDragImage(
+        poolItem,
+        Math.max(0, Math.min(event.clientX - rect.left, rect.width)),
+        Math.max(0, Math.min(event.clientY - rect.top, rect.height)),
+      );
+    }
   }
   if (dragPayload && event.dataTransfer) event.dataTransfer.effectAllowed = "move";
 });
 
 elements.rankGrid.addEventListener("dragover", (event) => {
-  if (!dragPayload || !["rank", "pool"].includes(dragPayload.type)) return;
+  if (dragPayload?.type !== "pool") return;
   const rankList = event.target.closest(".rank-list");
   if (!rankList || rankList.dataset.position !== dragPayload.position) return;
   event.preventDefault();
@@ -789,13 +1059,7 @@ elements.rankGrid.addEventListener("drop", (event) => {
   const payload = dragPayload;
   clearDropIndicators();
   dragPayload = null;
-  if (payload.type === "pool") {
-    addPoolPlayerToRankings(payload.position, payload.index, targetIndex);
-  } else {
-    if (payload.index < targetIndex) targetIndex -= 1;
-    targetIndex = Math.max(0, Math.min(targetIndex, state.rankings[payload.position].length - 1));
-    reorderRankedPlayer(payload.position, payload.index, targetIndex);
-  }
+  addPoolPlayerToRankings(payload.position, payload.index, targetIndex);
 });
 
 elements.rankGrid.addEventListener("dragend", () => {
@@ -847,45 +1111,28 @@ elements.lineupRows.addEventListener("click", (event) => {
   }
 });
 
-elements.lineupRows.addEventListener("dragstart", (event) => {
+elements.lineupRows.addEventListener("pointerdown", (event) => {
   const handle = event.target.closest(".slot-drag-handle");
   if (!handle) return;
-  dragPayload = { type: "slot", index: Number(handle.dataset.index) };
-  handle.closest(".lineup-row")?.classList.add("is-dragging");
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-});
-
-elements.lineupRows.addEventListener("dragover", (event) => {
-  if (dragPayload?.type !== "slot") return;
-  const row = event.target.closest(".lineup-row");
-  if (!row) return;
-  event.preventDefault();
-  document.querySelectorAll(".lineup-row.drop-before, .lineup-row.drop-after").forEach((item) => {
-    item.classList.remove("drop-before", "drop-after");
+  const source = handle.closest(".lineup-row");
+  const fromIndex = Number(handle.dataset.index);
+  beginPointerReorder(event, {
+    source,
+    parent: elements.lineupRows,
+    itemSelector: ".lineup-row",
+    fromIndex,
+    onDrop: (targetIndex) => reorderSlot(fromIndex, targetIndex),
   });
-  const after = event.clientY > row.getBoundingClientRect().top + row.offsetHeight / 2;
-  row.classList.toggle("drop-after", after);
-  row.classList.toggle("drop-before", !after);
 });
 
-elements.lineupRows.addEventListener("drop", (event) => {
-  if (dragPayload?.type !== "slot") return;
-  const row = event.target.closest(".lineup-row");
-  if (!row) return;
-  event.preventDefault();
-  const after = event.clientY > row.getBoundingClientRect().top + row.offsetHeight / 2;
-  let targetIndex = Number(row.dataset.index) + (after ? 1 : 0);
-  const fromIndex = dragPayload.index;
-  if (fromIndex < targetIndex) targetIndex -= 1;
-  targetIndex = Math.max(0, Math.min(targetIndex, state.slots.length - 1));
-  dragPayload = null;
-  clearDropIndicators();
-  reorderSlot(fromIndex, targetIndex);
-});
-
-elements.lineupRows.addEventListener("dragend", () => {
-  dragPayload = null;
-  clearDropIndicators();
+window.addEventListener("pointermove", movePointerReorder, { passive: false });
+window.addEventListener("pointerup", (event) => finishPointerReorder(event));
+window.addEventListener("pointercancel", (event) => finishPointerReorder(event, { cancelled: true }));
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && pointerDrag) {
+    finishPointerReorder(null, { cancelled: true });
+    announce("Drag cancelled.");
+  }
 });
 
 document.querySelectorAll('input[name="lineupMode"]').forEach((input) => {
@@ -991,7 +1238,7 @@ elements.importFile.addEventListener("change", async () => {
     undoStack.push(copyState(state));
     state = validation.state;
     persist();
-    renderAll();
+    renderWithMotion();
     announce("Backup imported successfully.");
   } catch {
     announce("That file is not valid calculator JSON.", { assertive: true });
@@ -1024,6 +1271,9 @@ elements.scoringFormatSelect.addEventListener("change", () => {
 
 elements.flexShareInput.addEventListener("input", () => {
   elements.flexShareOutput.value = `${elements.flexShareInput.value}%`;
+  elements.flexShareOutput.classList.remove("is-updating");
+  void elements.flexShareOutput.offsetWidth;
+  elements.flexShareOutput.classList.add("is-updating");
 });
 
 elements.flexShareInput.addEventListener("change", () => {
@@ -1052,10 +1302,11 @@ elements.resetButton.addEventListener("click", async () => {
   state = createDefaultState();
   persist();
   activeTab = "rankings";
-  renderAll();
+  renderWithMotion();
   announce("All calculator data was reset.");
 });
 
 // Persist once on startup so legacy state is migrated to the versioned key.
 persist();
 renderAll();
+requestAnimationFrame(() => document.documentElement.classList.add("motion-ready"));

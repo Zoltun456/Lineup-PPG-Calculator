@@ -145,6 +145,76 @@ async function evaluate(client, expression) {
   return response.result.value;
 }
 
+async function pointerDrag(client, geometry, previewSelector) {
+  await client.send("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x: geometry.startX,
+    y: geometry.startY,
+    button: "left",
+    buttons: 1,
+    clickCount: 1,
+  });
+  await client.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: geometry.startX + 8,
+    y: geometry.startY + 8,
+    button: "left",
+    buttons: 1,
+  });
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector(${JSON.stringify(previewSelector)}))`
+      + " && document.body.classList.contains('is-pointer-dragging')",
+  );
+  await client.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: geometry.endX,
+    y: geometry.endY,
+    button: "left",
+    buttons: 1,
+  });
+  await client.send("Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x: geometry.endX,
+    y: geometry.endY,
+    button: "left",
+    buttons: 0,
+    clickCount: 1,
+  });
+}
+
+async function touchDrag(client, geometry, previewSelector) {
+  const touchPoint = (x, y) => ({
+    x,
+    y,
+    id: 1,
+    radiusX: 4,
+    radiusY: 4,
+    force: 1,
+  });
+  await client.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [touchPoint(geometry.startX, geometry.startY)],
+  });
+  await client.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [touchPoint(geometry.startX + 8, geometry.startY + 8)],
+  });
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector(${JSON.stringify(previewSelector)}))`
+      + " && document.body.classList.contains('is-pointer-dragging')",
+  );
+  await client.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [touchPoint(geometry.endX, geometry.endY)],
+  });
+  await client.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+}
+
 const chromePath = await findChrome();
 const appPort = await availablePort();
 const appUrl = `http://127.0.0.1:${appPort}`;
@@ -239,12 +309,114 @@ try {
 
   await evaluate(client, "document.querySelector('[data-action=\"pool-add\"][data-position=\"QB\"]').click()");
   await waitForValue(client, "document.querySelectorAll('[data-position=\"QB\"] .rank-item').length === 1");
+  await evaluate(client, "document.querySelector('[data-action=\"pool-add\"][data-position=\"QB\"]').click()");
+  await waitForValue(client, "document.querySelectorAll('[data-position=\"QB\"] .rank-item').length === 2");
+  await waitForValue(
+    client,
+    "document.getAnimations().filter((animation) => animation.effect.getTiming().iterations !== Infinity)"
+      + ".every((animation) => animation.playState !== 'running')",
+  );
+  const rankDragGeometry = await evaluate(client, `(() => {
+    const items = [...document.querySelectorAll('[data-position="QB"] .rank-item')];
+    items[0].scrollIntoView({ block: 'center' });
+    const handleRect = items[0].querySelector('.rank-drag-handle').getBoundingClientRect();
+    const targetRect = items[1].getBoundingClientRect();
+    return {
+      startX: handleRect.left + handleRect.width / 2,
+      startY: handleRect.top + handleRect.height / 2,
+      endX: handleRect.left + handleRect.width / 2,
+      endY: targetRect.bottom - 2,
+      movedName: items[0].querySelector('.player-name').textContent,
+      targetName: items[1].querySelector('.player-name').textContent
+    };
+  })()`);
+  await pointerDrag(client, rankDragGeometry, ".drag-preview.rank-item");
+  await waitForValue(
+    client,
+    `document.querySelector('[data-position="QB"] .rank-item .player-name')?.textContent === ${JSON.stringify(rankDragGeometry.targetName)}`,
+  );
+  await client.send("Emulation.setDeviceMetricsOverride", {
+    width: 1200,
+    height: 800,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  const hoverPoint = await evaluate(client, `(() => {
+    scrollTo(0, 0);
+    const rect = document.querySelector('[data-position="QB"] .rank-item').getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  })()`);
+  await client.send("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: hoverPoint.x,
+    y: hoverPoint.y,
+  });
+  const listOverflow = await evaluate(client, `(() => (
+    [...document.querySelectorAll('.rank-list, .pool-list')].map((list) => {
+      const style = getComputedStyle(list);
+      const horizontalScrollbarHeight = list.offsetHeight
+        - list.clientHeight
+        - parseFloat(style.borderTopWidth)
+        - parseFloat(style.borderBottomWidth);
+      return {
+        overflowX: style.overflowX,
+        horizontalScrollbarHeight,
+        label: list.getAttribute('aria-label')
+      };
+    })
+  ))()`);
+  const scrollingList = listOverflow.find((list) => (
+    list.overflowX !== "hidden" || list.horizontalScrollbarHeight > 2
+  ));
+  if (scrollingList) {
+    throw new Error(`Hover created horizontal list scrolling: ${JSON.stringify(scrollingList)}`);
+  }
+  await client.send("Emulation.setDeviceMetricsOverride", {
+    width: 375,
+    height: 900,
+    deviceScaleFactor: 1,
+    mobile: true,
+  });
   await evaluate(client, "location.hash = '#lineup'");
   await waitForValue(client, "document.querySelector('#panel-lineup').hidden === false");
 
   const lineupMobile = await measure();
   if (lineupMobile.documentWidth > 375 || lineupMobile.bodyWidth > 375) {
     throw new Error(`Lineup overflow at 375px: ${JSON.stringify(lineupMobile)}`);
+  }
+
+  const dragGeometry = await evaluate(client, `(() => {
+    const rows = [...document.querySelectorAll('#lineupRows .lineup-row')];
+    rows[1].scrollIntoView({ block: 'center' });
+    const handleRect = rows[1].querySelector('.slot-drag-handle').getBoundingClientRect();
+    const targetRect = rows[2].getBoundingClientRect();
+    return {
+      startX: handleRect.left + handleRect.width / 2,
+      startY: handleRect.top + handleRect.height / 2,
+      endX: handleRect.left + handleRect.width / 2,
+      endY: targetRect.bottom - 4,
+      movedSlotId: rows[1].dataset.slotId,
+      targetSlotId: rows[2].dataset.slotId
+    };
+  })()`);
+  await touchDrag(client, dragGeometry, ".drag-preview.lineup-row");
+  await waitForValue(
+    client,
+    `document.querySelectorAll('#lineupRows .lineup-row')[2]?.dataset.slotId === ${JSON.stringify(dragGeometry.movedSlotId)}`,
+  );
+  const motionFeatures = await evaluate(client, `(() => {
+    const buttonStyle = getComputedStyle(document.querySelector('#addSlotButton'));
+    const row = document.querySelector('#lineupRows .lineup-row');
+    const handleStyle = getComputedStyle(row.querySelector('.slot-drag-handle'));
+    return {
+      buttonTransitions: buttonStyle.transitionDuration !== '0s',
+      rowHasStableMotionIdentity: row.style.viewTransitionName.startsWith('slot-'),
+      touchDragEnabled: handleStyle.touchAction === 'none',
+      dragPreviewCleanedUp: !document.body.classList.contains('is-pointer-dragging')
+    };
+  })()`);
+  if (Object.values(motionFeatures).some((value) => !value)) {
+    throw new Error(`Motion interaction checks failed: ${JSON.stringify(motionFeatures)}`);
   }
 
   await evaluate(client, `(() => {
@@ -296,8 +468,10 @@ try {
   }
 
   process.stdout.write(
-    "Browser smoke test passed: 375px rankings/lineup/settings, PPR and Standard calculations, "
-      + "source disclosure, local-only requests, and zero runtime exceptions.\n",
+    "Browser smoke test passed: 375px rankings/lineup/settings, full-row mouse and touch drag, "
+      + "motion feedback, hover overflow regression, PPR and Standard calculations, "
+      + "source disclosure, local-only requests, "
+      + "and zero runtime exceptions.\n",
   );
 } finally {
   try {

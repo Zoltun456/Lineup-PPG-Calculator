@@ -27,6 +27,11 @@
   --flex-bg: #fbf0d0;
   --shadow: 0 18px 42px -28px rgb(14 43 32 / 45%);
   --radius: 16px;
+  --motion-fast: 130ms;
+  --motion-base: 220ms;
+  --motion-slow: 360ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.25);
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-display: "Arial Narrow", "Roboto Condensed", Impact, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
@@ -48,6 +53,11 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
+}
+
+body.is-pointer-dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 button,
@@ -366,6 +376,7 @@ select:focus-visible,
 .pool-list {
   min-height: 45px;
   max-height: 265px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   border-top: 1px solid var(--line);
@@ -404,6 +415,43 @@ select:focus-visible,
 
 .rank-item.is-dragging {
   opacity: 0.45;
+}
+
+.rank-item.drag-placeholder,
+.lineup-row.drag-placeholder {
+  opacity: 0.14;
+}
+
+.rank-item.is-drag-shifting,
+.lineup-row.is-drag-shifting {
+  transform: translateY(var(--drag-shift));
+}
+
+.drag-preview {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--position-color, var(--field)) 55%, white);
+  background-color: var(--card);
+  box-shadow:
+    0 24px 46px -18px rgb(14 43 32 / 58%),
+    0 8px 16px -10px rgb(14 43 32 / 42%);
+  filter: saturate(1.08);
+  opacity: 0.98;
+  will-change: transform, opacity;
+}
+
+.drag-preview .drag-handle {
+  cursor: grabbing;
+  background: var(--field);
+  color: white;
+}
+
+.drag-preview.is-releasing {
+  opacity: 0;
+  filter: saturate(1.08) blur(1px);
+}
+
+.drag-preview.is-returning {
+  opacity: 0;
 }
 
 .rank-item.drop-before {
@@ -971,6 +1019,105 @@ select:focus-visible,
   text-align: center;
 }
 
+.tab-button:hover:not(.is-active) {
+  border-color: var(--line-strong);
+  background: white;
+  color: var(--field);
+}
+
+.button,
+.icon-button,
+.add-player-button,
+.drag-handle,
+.tab-button,
+.segmented-control span {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.button:active:not(:disabled),
+.icon-button:active:not(:disabled),
+.add-player-button:active,
+.tab-button:active {
+  box-shadow: none;
+}
+
+.add-player-button:hover {
+  border-color: var(--field);
+  background: var(--field-soft);
+}
+
+.pool-tools input:hover,
+.lineup-row select:hover,
+.lineup-row input:hover,
+.field input[type="number"]:hover,
+.field select:hover {
+  border-color: #8f9d94;
+  background-color: white;
+}
+
+.pool-tools input:focus,
+.lineup-row select:focus,
+.lineup-row input:focus,
+.field input[type="number"]:focus,
+.field select:focus {
+  border-color: var(--field);
+  background-color: white;
+  box-shadow: 0 0 0 4px rgb(23 63 48 / 9%);
+}
+
+input[type="range"] {
+  accent-color: var(--field);
+}
+
+.segmented-control label:hover span {
+  background: var(--field-soft);
+  color: var(--field);
+}
+
+.segmented-control input:checked + span,
+.segmented-control label:hover input:checked + span {
+  background: var(--field);
+  color: white;
+}
+
+.rank-item:hover,
+.pool-item:hover {
+  z-index: 1;
+  background: #fbfcfa;
+  box-shadow: inset 3px 0 var(--field-soft);
+}
+
+.lineup-row:hover {
+  background:
+    linear-gradient(90deg, var(--position-tint), transparent 190px),
+    #fdfdfc;
+}
+
+.baseline-chip:hover {
+  border-color: var(--field);
+  color: var(--field);
+}
+
+.info-card:hover {
+  border-color: var(--line-strong);
+  background: white;
+  box-shadow: 0 16px 32px -28px rgb(14 43 32 / 50%);
+}
+
+.dataset-links a:hover {
+  color: var(--gold-deep);
+  text-decoration-thickness: 2px;
+}
+
+.dialog[open] {
+  transform-origin: center;
+}
+
+.range-row output.is-updating,
+.total-bar strong.is-updating {
+  transform-origin: center;
+}
+
 @media (max-width: 900px) {
   .rank-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1151,10 +1298,236 @@ select:focus-visible,
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .skip-link,
   .button,
   .icon-button,
   .tab-button,
-  .add-player-button {
-    transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  .add-player-button,
+  .drag-handle,
+  .segmented-control span,
+  .baseline-chip,
+  .dataset-links a,
+  .pool-tools input,
+  .lineup-row select,
+  .lineup-row input,
+  .field input[type="number"],
+  .field select {
+    transition:
+      color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      background-color var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease,
+      transform var(--motion-fast) var(--ease-out);
+  }
+
+  .rank-item:not(.drag-preview),
+  .pool-item:not(.drag-preview),
+  .lineup-row:not(.drag-preview),
+  .info-card {
+    transition:
+      transform var(--motion-base) var(--ease-out),
+      opacity var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      background-color var(--motion-fast) ease,
+      box-shadow var(--motion-base) var(--ease-out);
+  }
+
+  .rank-item.is-drag-shifting,
+  .lineup-row.is-drag-shifting {
+    transition:
+      transform 165ms var(--ease-out),
+      opacity var(--motion-fast) ease,
+      box-shadow var(--motion-fast) ease;
+  }
+
+  .drag-preview {
+    transition:
+      opacity 150ms ease,
+      filter 150ms ease,
+      box-shadow var(--motion-fast) ease;
+  }
+
+  .drag-preview.is-returning {
+    transition:
+      transform 180ms var(--ease-out),
+      opacity 180ms ease,
+      filter 180ms ease;
+  }
+
+  .tab-panel.is-entering {
+    animation: panel-enter var(--motion-slow) var(--ease-out) both;
+  }
+
+  .status-message.is-showing {
+    animation: status-pop 300ms var(--ease-spring) both;
+  }
+
+  .total-bar strong.is-updating {
+    animation: score-pop 360ms var(--ease-spring);
+  }
+
+  .range-row output.is-updating {
+    animation: output-pop 220ms var(--ease-spring);
+  }
+
+  .dialog[open] {
+    animation: dialog-pop 260ms var(--ease-spring);
+  }
+
+  .dialog[open]::backdrop {
+    animation: backdrop-in 220ms ease-out;
+  }
+
+  .save-note span {
+    animation: saved-pulse 2.4s ease-in-out infinite;
+  }
+
+  ::view-transition-group(*) {
+    animation-duration: 240ms;
+    animation-timing-function: var(--ease-out);
+  }
+
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    mix-blend-mode: normal;
+  }
+
+  @keyframes panel-enter {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes status-pop {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes score-pop {
+    0% {
+      transform: scale(1);
+    }
+    45% {
+      color: white;
+      transform: scale(1.12) rotate(-1deg);
+      text-shadow: 0 0 20px rgb(224 173 38 / 55%);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes output-pop {
+    50% {
+      transform: scale(1.09);
+      box-shadow: 0 4px 12px -7px rgb(14 43 32 / 55%);
+    }
+  }
+
+  @keyframes dialog-pop {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.94);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes backdrop-in {
+    from {
+      background: rgb(14 43 32 / 0%);
+      backdrop-filter: blur(0);
+    }
+  }
+
+  @keyframes saved-pulse {
+    0%,
+    100% {
+      opacity: 0.65;
+      text-shadow: none;
+    }
+    50% {
+      opacity: 1;
+      text-shadow: 0 0 7px currentcolor;
+    }
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .button:hover:not(:disabled),
+  .tab-button:hover,
+  .add-player-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px -13px rgb(14 43 32 / 60%);
+  }
+
+  .button:active:not(:disabled),
+  .tab-button:active,
+  .add-player-button:active {
+    transform: translateY(1px) scale(0.97);
+  }
+
+  .icon-button:hover:not(:disabled) {
+    transform: translateY(-1px) scale(1.1);
+  }
+
+  .icon-button:active:not(:disabled) {
+    transform: scale(0.88);
+  }
+
+  .drag-handle:hover {
+    transform: scale(1.08) rotate(-4deg);
+  }
+
+  body:not(.is-pointer-dragging) .lineup-row:hover {
+    box-shadow: inset 4px 0 var(--position-color);
+  }
+
+  .info-card:hover {
+    transform: translateY(-3px);
+  }
+
+  .baseline-chip:hover {
+    transform: translateY(-1px) scale(1.03);
+  }
+
+  .segmented-control label:hover span {
+    transform: translateY(-1px);
+  }
+
+  .pool-tools input:focus,
+  .lineup-row select:focus,
+  .lineup-row input:focus,
+  .field input[type="number"]:focus,
+  .field select:focus {
+    transform: translateY(-1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  ::view-transition-group(*) {
+    animation-duration: 0.01ms !important;
   }
 }

@@ -109,7 +109,9 @@ Import files are limited to 1 MB and bounded collection sizes. Imported values a
 - Use the visible Up/Down controls to reorder ranked players and lineup slots.
 - All player-pool actions use native buttons and all fields have programmatic labels.
 - The ranking columns and lineup rows switch to stacked mobile layouts.
-- Drag-and-drop remains available as a pointer convenience.
+- Drag handles pick up the complete row and support mouse, touch, and stylus input.
+- Reordering, tabs, controls, dialogs, and calculated totals use lightweight motion feedback.
+- Decorative motion is disabled automatically when the device requests reduced motion.
 
 ## License
 
