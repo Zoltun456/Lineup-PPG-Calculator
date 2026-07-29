@@ -238,6 +238,7 @@ select:focus-visible,
   margin: 0;
   padding: 8px 12px;
   overflow: hidden;
+  pointer-events: none;
   transform: translate(-50%, -50%);
   border: 1px solid #a9c0d9;
   border-radius: 9px;
