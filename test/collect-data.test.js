@@ -157,7 +157,7 @@ test("historical builder ranks by total points and averages rank PPG", () => {
   const seasonRows = {};
   for (const season of seasons) {
     seasonRows[season] = [];
-    for (const [position, depth] of Object.entries({ QB: 32, RB: 50, WR: 50, TE: 24 })) {
+    for (const [position, depth] of Object.entries({ QB: 36, RB: 72, WR: 84, TE: 30 })) {
       for (let index = 0; index < depth; index += 1) {
         const points = 300 - index + (season - 2024) * 10;
         seasonRows[season].push({
@@ -181,5 +181,5 @@ test("historical builder ranks by total points and averages rank PPG", () => {
   assert.equal(output.details.standard.QB["2024"][0].name, "QB 0");
   assert.equal(output.averages.standard.QB[0], 30.5);
   assert.equal(output.averages.ppr.WR[0], 32.5);
-  assert.equal(output.averages.halfPpr.TE.length, 24);
+  assert.equal(output.averages.halfPpr.TE.length, 30);
 });

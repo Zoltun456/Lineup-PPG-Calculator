@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const POSITIONS = ["QB", "RB", "WR", "TE"];
-const POSITION_DEPTHS = { QB: 32, RB: 50, WR: 50, TE: 24 };
+const POSITION_DEPTHS = { QB: 36, RB: 72, WR: 84, TE: 30 };
 const SCORING_FORMATS = {
   standard: {
     label: "Standard",

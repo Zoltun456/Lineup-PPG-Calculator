@@ -15,7 +15,7 @@ import { createDefaultState } from "../src/state.js";
 test("PPG lookup rejects invalid ranks and caps ranks beyond the dataset", () => {
   assert.equal(ppgFor("QB", 1), HISTORICAL_PPG.QB[0]);
   assert.equal(ppgFor("QB", 999), HISTORICAL_PPG.QB.at(-1));
-  assert.equal(clampRank("TE", 999), 24);
+  assert.equal(clampRank("TE", 999), 30);
   assert.equal(ppgFor("QB", 0), null);
   assert.equal(ppgFor("K", 1), null);
 });
@@ -45,7 +45,7 @@ test("replacement baselines are capped and report that fact", () => {
   const baselines = computeBaselines(slots, { teams: 12, flexRbShare: 50 });
 
   assert.equal(baselines.TE.requestedRank, 36);
-  assert.equal(baselines.TE.effectiveRank, 24);
+  assert.equal(baselines.TE.effectiveRank, 30);
   assert.equal(baselines.TE.wasCapped, true);
 });
 
@@ -88,7 +88,7 @@ test("rank mode uses capped rank data and computes VOR", () => {
   ];
 
   const result = calculateLineup(state);
-  assert.equal(result.rows[0].effectiveRank, 24);
+  assert.equal(result.rows[0].effectiveRank, 30);
   assert.equal(result.rows[0].rankWasCapped, true);
   assert.equal(result.rows[0].ppg, HISTORICAL_PPG.TE.at(-1));
   assert.ok(
