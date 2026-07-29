@@ -23,6 +23,19 @@ const SCORING_FORMATS = {
   },
 };
 const DEFAULT_OUTPUT_DIRECTORY = resolve("data", "generated");
+const CONSENSUS_RANKINGS_DIRECTORY = resolve("data", "sources", "consensus-rankings");
+// One file per position/format; QB has a single format-agnostic sheet since passing
+// production doesn't hinge on reception scoring the way RB/WR/TE do.
+const CONSENSUS_FILES = {
+  standard: { QB: "qb.csv", RB: "rb-standard.csv", WR: "wr-standard.csv", TE: "te-standard.csv" },
+  halfPpr: { QB: "qb.csv", RB: "rb-half-ppr.csv", WR: "wr-half-ppr.csv", TE: "te-half-ppr.csv" },
+  ppr: { QB: "qb.csv", RB: "rb-ppr.csv", WR: "wr-ppr.csv", TE: "te-ppr.csv" },
+};
+// Known nickname/legal-name mismatches between the consensus file and the Sleeper/nflverse
+// directory that suffix-stripping can't catch. Keyed by position, normalized consensus name.
+const CONSENSUS_NAME_ALIASES = {
+  RB: { kennygainwell: "Kenneth Gainwell" },
+};
 const DEFAULT_SEASON_COUNT = 5;
 const SLEEPER_RELEVANCE_RANK = 500;
 const SLEEPER_DEPTH_LIMIT = 3;
@@ -493,12 +506,82 @@ export function excludedSleeperPlayerNames(rawByPosition, selectedPlayers) {
   }));
 }
 
+function stripNameSuffix(name) {
+  return name.replace(/\s+(jr\.?|sr\.?|ii|iii|iv|v)$/i, "").trim();
+}
+
+// Consensus rows are matched to the canonical Sleeper/nflverse directory name so that a player
+// picked from the app's pool (which uses that canonical spelling) resolves against these ranks.
+// Rows that can't be matched still get a slot, using their own name as-is, since a user could
+// have quick-added that exact name; they just won't line up with the bundled default pool.
+function matchConsensusName(rawName, position, directoryIndex) {
+  const normalized = normalizedPlayerName(rawName);
+  const stripped = normalizedPlayerName(stripNameSuffix(rawName));
+  return directoryIndex.get(normalized)
+    ?? CONSENSUS_NAME_ALIASES[position]?.[normalized]
+    ?? directoryIndex.get(stripped)
+    ?? rawName;
+}
+
+export async function loadConsensusRankings(players, directory = CONSENSUS_RANKINGS_DIRECTORY) {
+  const directoryIndexByPosition = Object.fromEntries(POSITIONS.map((position) => {
+    const index = new Map();
+    for (const player of players[position] ?? []) {
+      index.set(normalizedPlayerName(player.name), player.name);
+      index.set(normalizedPlayerName(stripNameSuffix(player.name)), player.name);
+    }
+    return [position, index];
+  }));
+
+  const files = [];
+  const unmatched = [];
+  const rankings = {};
+  for (const format of Object.keys(CONSENSUS_FILES)) {
+    rankings[format] = {};
+    for (const position of POSITIONS) {
+      const fileName = CONSENSUS_FILES[format][position];
+      const filePath = join(directory, fileName);
+      const csvText = await readFile(filePath, "utf8");
+      const rows = parseCsv(csvText);
+      validateRequiredColumns(rows, ["Name", "Rank"], `consensus rankings ${fileName}`);
+      const sorted = [...rows].sort((left, right) => Number(left.Rank) - Number(right.Rank));
+
+      const seen = new Set();
+      const names = [];
+      for (const row of sorted) {
+        const matched = matchConsensusName(row.Name, position, directoryIndexByPosition[position]);
+        if (matched === row.Name && !directoryIndexByPosition[position].has(normalizedPlayerName(row.Name))) {
+          unmatched.push(`${fileName}: ${row.Name}`);
+        }
+        const key = matched.toLocaleLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        names.push(matched);
+      }
+      rankings[format][position] = names;
+      if (!files.some((entry) => entry.file === fileName)) {
+        files.push({ file: fileName, position, rows: rows.length, sha256: sha256(csvText) });
+      }
+    }
+  }
+
+  if (unmatched.length) {
+    process.stdout.write(
+      `Consensus rankings: ${unmatched.length} player(s) not found in the current directory `
+      + `(kept as-is, won't match the default pool):\n  ${unmatched.join("\n  ")}\n`,
+    );
+  }
+
+  return { rankings, files };
+}
+
 function datasetMetadata({
   seasons,
   generatedAt,
   sourceFiles,
   rosterFile,
   sleeperFiles,
+  consensusFiles,
   players,
 }) {
   return {
@@ -542,6 +625,11 @@ function datasetMetadata({
         usage: "Position-filtered player metadata; collected by this script and never requested by the browser.",
         files: sleeperFiles,
       },
+      consensusRankings: {
+        name: "User-compiled consensus draft rankings",
+        usage: "Manually maintained; not fetched over the network. Replace the CSVs in data/sources/consensus-rankings and rerun npm run data:refresh to update.",
+        files: consensusFiles,
+      },
     },
     playerCounts: Object.fromEntries(POSITIONS.map((position) => [position, players[position].length])),
   };
@@ -559,6 +647,7 @@ export function validateAppDataset(dataset) {
   if (!dataset?.sources?.nflverse?.files?.length) errors.push("nflverse source files are missing");
   if (!dataset?.sources?.nflverseRoster?.file?.url) errors.push("nflverse current roster source is missing");
   if (!dataset?.sources?.sleeper?.files?.length) errors.push("Sleeper source files are missing");
+  if (!dataset?.sources?.consensusRankings?.files?.length) errors.push("Consensus rankings source files are missing");
   const rosterSeason = dataset?.sources?.nflverseRoster?.season;
 
   for (const format of Object.keys(SCORING_FORMATS)) {
@@ -568,6 +657,15 @@ export function validateAppDataset(dataset) {
         errors.push(`${format}.${position} must contain ${POSITION_DEPTHS[position]} PPG values`);
       } else if (values.some((value) => !Number.isFinite(value) || value < -20 || value > 100)) {
         errors.push(`${format}.${position} contains invalid PPG values`);
+      }
+      const consensusNames = dataset?.consensusRankings?.[format]?.[position];
+      if (
+        !Array.isArray(consensusNames)
+        || !consensusNames.length
+        || consensusNames.some((name) => typeof name !== "string" || !name.trim())
+        || new Set(consensusNames.map((name) => name.toLocaleLowerCase())).size !== consensusNames.length
+      ) {
+        errors.push(`consensusRankings.${format}.${position} is invalid`);
       }
     }
   }
@@ -702,12 +800,17 @@ async function collect({ seasons, outputDirectory }) {
   const players = selectSleeperPlayers(rawSleeper, currentRoster);
   const excludedPlayerNames = excludedSleeperPlayerNames(rawSleeper, players);
   const historical = buildHistoricalDataset(seasonRows, seasons);
+
+  process.stdout.write("Loading consensus draft rankings...\n");
+  const consensus = await loadConsensusRankings(players);
+
   const metadata = datasetMetadata({
     seasons,
     generatedAt,
     sourceFiles,
     rosterFile,
     sleeperFiles,
+    consensusFiles: consensus.files,
     players,
   });
 
@@ -716,6 +819,7 @@ async function collect({ seasons, outputDirectory }) {
     historicalPpg: historical.averages,
     players,
     excludedPlayerNames,
+    consensusRankings: consensus.rankings,
   });
   const detailData = attachIntegrity({
     schemaVersion: metadata.schemaVersion,

@@ -1,5 +1,6 @@
 import { calculateLineup } from "./calculator.js";
 import {
+  consensusRankingsFor,
   DATASET_META,
   PLAYER_DIRECTORY,
   POSITIONS,
@@ -41,6 +42,8 @@ const elements = {
   scoringFormatSelect: document.querySelector("#scoringFormatSelect"),
   flexShareInput: document.querySelector("#flexShareInput"),
   flexShareOutput: document.querySelector("#flexShareOutput"),
+  lineupRankingSourceControl: document.querySelector("#lineupRankingSourceControl"),
+  leagueRankingSourceControl: document.querySelector("#leagueRankingSourceControl"),
   datasetDetails: document.querySelector("#datasetDetails"),
   datasetLinks: document.querySelector("#datasetLinks"),
   resetButton: document.querySelector("#resetButton"),
@@ -85,6 +88,10 @@ const playerMetadata = new Map(POSITIONS.flatMap((position) => (
 
 function metadataFor(position, name) {
   return playerMetadata.get(`${position}\u0000${name.toLocaleLowerCase()}`) ?? null;
+}
+
+function rankingsForSource(source, ownRankings) {
+  return source === "consensus" ? consensusRankingsFor(state.settings.scoringFormat) : ownRankings;
 }
 
 function createElement(tagName, attributes = {}, children = []) {
@@ -450,13 +457,16 @@ function createPlayerSelect(slot, index) {
     dataset: { action: "slot-player", index: String(index) },
   });
   const eligiblePositions = slot.pos === "FLEX" ? ["RB", "WR"] : [slot.pos];
+  const sourceRankings = rankingsForSource(state.lineupRankingSource, state.rankings);
   const options = eligiblePositions.flatMap((position) => (
-    state.rankings[position].map((name) => ({ position, name }))
+    sourceRankings[position].map((name) => ({ position, name }))
   ));
 
   select.append(createElement("option", {
     value: "",
-    text: options.length ? "Select a ranked player" : "Rank players first",
+    text: options.length
+      ? "Select a ranked player"
+      : (state.lineupRankingSource === "consensus" ? "No consensus players available" : "Rank players first"),
   }));
   options.forEach((player) => {
     const metadata = metadataFor(player.position, player.name);
@@ -473,36 +483,9 @@ function createPlayerSelect(slot, index) {
   return select;
 }
 
-function createRankEntry(slot, index) {
-  const wrapper = createElement("div", { className: "rank-entry" });
-  if (slot.pos === "FLEX") {
-    const flexSelect = createElement("select", {
-      id: `slot-flex-${slot.id}`,
-      dataset: { action: "slot-flex-position", index: String(index) },
-      "aria-label": `Slot ${index + 1} FLEX position`,
-    }, [
-      createElement("option", { value: "RB", text: "RB", selected: slot.flexPos === "RB" }),
-      createElement("option", { value: "WR", text: "WR", selected: slot.flexPos === "WR" }),
-    ]);
-    wrapper.append(flexSelect);
-  }
-  wrapper.append(createElement("input", {
-    id: `slot-entry-${slot.id}`,
-    type: "number",
-    min: 1,
-    max: 999,
-    step: 1,
-    inputMode: "numeric",
-    placeholder: "Rank",
-    value: slot.rank ?? "",
-    dataset: { action: "slot-rank", index: String(index) },
-  }));
-  return wrapper;
-}
-
 function renderLineup() {
-  const result = calculateLineup(state);
-  const mode = state.lineupMode;
+  const effectiveRankings = rankingsForSource(state.lineupRankingSource, state.rankings);
+  const result = calculateLineup(state, undefined, effectiveRankings);
   const rows = state.slots.map((slot, index) => {
     const rowResult = result.rows[index];
     const row = createElement("div", {
@@ -523,17 +506,12 @@ function renderLineup() {
       createElement("label", { htmlFor: positionSelect.id, text: "Position" }),
       positionSelect,
     ]);
-    const entry = mode === "player"
-      ? createPlayerSelect(slot, index)
-      : createRankEntry(slot, index);
+    const entry = createPlayerSelect(slot, index);
     const entryField = createElement("div", { className: "lineup-field entry-field" }, [
-      createElement("label", {
-        htmlFor: `slot-entry-${slot.id}`,
-        text: mode === "player" ? "Player" : "Positional rank",
-      }),
+      createElement("label", { htmlFor: `slot-entry-${slot.id}`, text: "Player" }),
       entry,
     ]);
-    if (mode === "player" && rowResult.position && rowResult.rank) {
+    if (rowResult.position && rowResult.rank) {
       entryField.append(createElement("span", {
         className: "entry-rank-badge",
         text: `${rowResult.position}${rowResult.rank}`,
@@ -586,9 +564,7 @@ function renderLineup() {
     if (rowResult.status === "duplicate") {
       row.append(createElement("p", {
         className: "row-message",
-        text: mode === "player"
-          ? "This player is already used in another lineup slot."
-          : "This positional rank is already used in another lineup slot.",
+        text: "This player is already used in another lineup slot.",
       }));
     } else if (rowResult.rankWasCapped) {
       row.append(createElement("p", {
@@ -625,8 +601,8 @@ function renderLineup() {
   elements.baselineLabel.textContent = `Replacement ranks · ${SCORING_FORMATS[state.settings.scoringFormat].label}`;
   pulseValue(elements.totalPpg, result.totalPpg.toFixed(1));
   pulseValue(elements.totalVor, result.totalVor.toFixed(1));
-  document.querySelectorAll('input[name="lineupMode"]').forEach((input) => {
-    input.checked = input.value === mode;
+  document.querySelectorAll('input[name="lineupRankingSource"]').forEach((input) => {
+    input.checked = input.value === state.lineupRankingSource;
   });
 }
 
@@ -747,7 +723,7 @@ function renderLeague() {
   elements.leagueResults.hidden = false;
 
   const ranked = computeLeaguePowerRankings(leagueData, {
-    rankings: state.rankings,
+    rankings: rankingsForSource(state.leagueRankingSource, state.rankings),
     settings: state.settings,
   });
   const metric = state.leagueSortMetric;
@@ -819,6 +795,9 @@ function renderLeague() {
 
   document.querySelectorAll('input[name="leagueSortMetric"]').forEach((input) => {
     input.checked = input.value === metric;
+  });
+  document.querySelectorAll('input[name="leagueRankingSource"]').forEach((input) => {
+    input.checked = input.value === state.leagueRankingSource;
   });
 }
 
@@ -1177,6 +1156,15 @@ document.querySelectorAll('input[name="leagueSortMetric"]').forEach((input) => {
   });
 });
 
+document.querySelectorAll('input[name="leagueRankingSource"]').forEach((input) => {
+  input.addEventListener("change", () => {
+    if (!input.checked) return;
+    commit(`Power rankings switched to ${input.value === "consensus" ? "consensus rankings" : "my rankings"}.`, (draft) => {
+      draft.leagueRankingSource = input.value;
+    });
+  });
+});
+
 elements.leagueTeams.addEventListener("toggle", (event) => {
   const details = event.target;
   if (!(details instanceof HTMLElement) || !details.matches(".league-team")) return;
@@ -1308,17 +1296,6 @@ elements.lineupRows.addEventListener("change", (event) => {
       slot.player = parsePlayerKey(event.target.value);
     });
   }
-  if (action === "slot-flex-position") {
-    updateSlot(index, (slot) => {
-      slot.flexPos = event.target.value;
-    });
-  }
-  if (action === "slot-rank") {
-    const value = Number(event.target.value);
-    updateSlot(index, (slot) => {
-      slot.rank = Number.isInteger(value) && value > 0 ? value : null;
-    });
-  }
 });
 
 elements.lineupRows.addEventListener("click", (event) => {
@@ -1359,11 +1336,11 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-document.querySelectorAll('input[name="lineupMode"]').forEach((input) => {
+document.querySelectorAll('input[name="lineupRankingSource"]').forEach((input) => {
   input.addEventListener("change", () => {
     if (!input.checked) return;
-    commit(`Lineup entry mode changed to ${input.value === "player" ? "player" : "rank"}.`, (draft) => {
-      draft.lineupMode = input.value;
+    commit(`Lineup player list switched to ${input.value === "consensus" ? "consensus rankings" : "my rankings"}.`, (draft) => {
+      draft.lineupRankingSource = input.value;
     });
   });
 });
@@ -1374,7 +1351,6 @@ elements.addSlotButton.addEventListener("click", () => {
       rankings: draft.rankings,
       pool: draft.pool,
       slots: [{ pos: "FLEX", flexPos: "RB" }],
-      lineupMode: draft.lineupMode,
       settings: draft.settings,
     }).slots[0];
     draft.slots.push(freshSlot);
@@ -1409,14 +1385,13 @@ elements.clearRankingsButton.addEventListener("click", async () => {
 elements.clearLineupButton.addEventListener("click", async () => {
   const confirmed = await confirmAction({
     title: "Clear lineup selections?",
-    message: "All player and rank selections will be cleared. Your lineup slot structure will remain.",
+    message: "All player selections will be cleared. Your lineup slot structure will remain.",
     confirmLabel: "Clear lineup",
   });
   if (!confirmed) return;
   commit("Lineup selections were cleared.", (draft) => {
     draft.slots.forEach((slot) => {
       slot.player = null;
-      slot.rank = null;
     });
   });
 });

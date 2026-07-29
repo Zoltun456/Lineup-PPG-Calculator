@@ -289,6 +289,7 @@ select:focus-visible,
   line-height: 1.5;
 }
 
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -767,12 +768,6 @@ select:focus-visible,
 
 .lineup-field.position-field > label::after {
   content: " " counter(slot);
-}
-
-.rank-entry {
-  display: grid;
-  grid-template-columns: 68px minmax(55px, 1fr);
-  gap: 5px;
 }
 
 .entry-rank-badge {

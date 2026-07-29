@@ -9,7 +9,7 @@ import {
   rankOf,
   resolveSlot,
 } from "../src/calculator.js";
-import { HISTORICAL_PPG } from "../src/data.js";
+import { consensusRankingsFor, HISTORICAL_PPG } from "../src/data.js";
 import { createDefaultState } from "../src/state.js";
 
 test("PPG lookup rejects invalid ranks and caps ranks beyond the dataset", () => {
@@ -49,20 +49,13 @@ test("replacement baselines are capped and report that fact", () => {
   assert.equal(baselines.TE.wasCapped, true);
 });
 
-test("player and rank slots resolve to a stable identity", () => {
+test("player slots resolve to a stable identity", () => {
   const rankings = { QB: ["Alpha"], RB: [], WR: ["Bravo"], TE: [] };
   assert.deepEqual(
-    resolveSlot(
-      { pos: "QB", player: { name: "Alpha", position: "QB" } },
-      "player",
-      rankings,
-    ),
+    resolveSlot({ pos: "QB", player: { name: "Alpha", position: "QB" } }, rankings),
     { position: "QB", rank: 1, identity: "player:QB:Alpha" },
   );
-  assert.deepEqual(
-    resolveSlot({ pos: "FLEX", flexPos: "WR", rank: 4 }, "rank", rankings),
-    { position: "WR", rank: 4, identity: "rank:WR:4" },
-  );
+  assert.equal(resolveSlot({ pos: "QB", player: null }, rankings), null);
   assert.equal(rankOf(rankings, "QB", "Missing"), null);
 });
 
@@ -70,8 +63,8 @@ test("duplicate player selections do not inflate totals", () => {
   const state = createDefaultState();
   state.rankings.QB = ["Alpha"];
   state.slots = [
-    { id: "one", pos: "QB", player: { name: "Alpha", position: "QB" }, rank: null, flexPos: "RB" },
-    { id: "two", pos: "QB", player: { name: "Alpha", position: "QB" }, rank: null, flexPos: "RB" },
+    { id: "one", pos: "QB", player: { name: "Alpha", position: "QB" }, flexPos: "RB" },
+    { id: "two", pos: "QB", player: { name: "Alpha", position: "QB" }, flexPos: "RB" },
   ];
 
   const result = calculateLineup(state);
@@ -80,11 +73,11 @@ test("duplicate player selections do not inflate totals", () => {
   assert.equal(result.totalPpg, HISTORICAL_PPG.QB[0]);
 });
 
-test("rank mode uses capped rank data and computes VOR", () => {
+test("player rank beyond the dataset depth is capped and computes VOR", () => {
   const state = createDefaultState();
-  state.lineupMode = "rank";
+  state.rankings.TE = Array.from({ length: 31 }, (_, index) => `TE Player ${index + 1}`);
   state.slots = [
-    { id: "one", pos: "TE", player: null, rank: 999, flexPos: "RB" },
+    { id: "one", pos: "TE", player: { name: "TE Player 31", position: "TE" }, flexPos: "RB" },
   ];
 
   const result = calculateLineup(state);
@@ -99,9 +92,9 @@ test("rank mode uses capped rank data and computes VOR", () => {
 
 test("selected scoring format changes lineup PPG", () => {
   const state = createDefaultState();
-  state.lineupMode = "rank";
+  state.rankings.WR = ["Solo"];
   state.slots = [
-    { id: "one", pos: "WR", player: null, rank: 1, flexPos: "RB" },
+    { id: "one", pos: "WR", player: { name: "Solo", position: "WR" }, flexPos: "RB" },
   ];
 
   state.settings.scoringFormat = "standard";
@@ -110,4 +103,19 @@ test("selected scoring format changes lineup PPG", () => {
   const ppr = calculateLineup(state);
 
   assert.ok(ppr.totalPpg > standard.totalPpg);
+});
+
+test("an explicit rankings override resolves independently of state.rankings", () => {
+  const state = createDefaultState();
+  state.slots = [
+    { id: "one", pos: "QB", player: { name: "Josh Allen", position: "QB" }, flexPos: "RB" },
+  ];
+
+  const withOwnRankings = calculateLineup(state);
+  assert.equal(withOwnRankings.rows[0].status, "empty");
+
+  const consensusRankings = consensusRankingsFor(state.settings.scoringFormat);
+  const withConsensus = calculateLineup(state, undefined, consensusRankings);
+  assert.equal(withConsensus.rows[0].status, "valid");
+  assert.equal(withConsensus.rows[0].rank, 1);
 });

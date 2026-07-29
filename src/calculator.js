@@ -55,25 +55,14 @@ export function computeBaselines(slots, settings, ppgData = HISTORICAL_PPG) {
   }));
 }
 
-export function resolveSlot(slot, mode, rankings) {
-  if (mode === "player") {
-    if (!slot.player?.name || !slot.player?.position) return null;
-    const position = slot.pos === "FLEX" ? slot.player.position : slot.pos;
-    const rank = rankOf(rankings, position, slot.player.name);
-    return rank === null ? null : {
-      position,
-      rank,
-      identity: `player:${position}:${slot.player.name}`,
-    };
-  }
-
-  const position = slot.pos === "FLEX" ? slot.flexPos : slot.pos;
-  const rank = Number(slot.rank);
-  if (!POSITIONS.includes(position) || !Number.isInteger(rank) || rank < 1) return null;
-  return {
+export function resolveSlot(slot, rankings) {
+  if (!slot.player?.name || !slot.player?.position) return null;
+  const position = slot.pos === "FLEX" ? slot.player.position : slot.pos;
+  const rank = rankOf(rankings, position, slot.player.name);
+  return rank === null ? null : {
     position,
     rank,
-    identity: `rank:${position}:${rank}`,
+    identity: `player:${position}:${slot.player.name}`,
   };
 }
 
@@ -145,6 +134,7 @@ export function pickStartingLineup(players, rankings, ppgData, baselines, slotCo
 export function calculateLineup(
   state,
   ppgData = historicalPpgFor(state.settings?.scoringFormat),
+  rankings = state.rankings,
 ) {
   const baselines = computeBaselines(state.slots, state.settings, ppgData);
   const used = new Set();
@@ -152,7 +142,7 @@ export function calculateLineup(
   let totalVor = 0;
 
   const rows = state.slots.map((slot) => {
-    const resolved = resolveSlot(slot, state.lineupMode, state.rankings);
+    const resolved = resolveSlot(slot, rankings);
     if (!resolved) {
       return { slotId: slot.id, status: "empty", ppg: null, vor: null };
     }

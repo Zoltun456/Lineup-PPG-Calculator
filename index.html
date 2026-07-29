@@ -107,17 +107,17 @@
           <div>
             <p class="section-kicker">Roster builder</p>
             <h2>Lineup</h2>
-            <p>Choose ranked players or model slots by positional rank.</p>
+            <p>Choose players from your own rankings, or the bundled consensus rankings.</p>
           </div>
-          <fieldset class="segmented-control">
-            <legend class="sr-only">Lineup entry mode</legend>
+          <fieldset class="segmented-control" id="lineupRankingSourceControl">
+            <legend class="sr-only">Player rankings source</legend>
             <label>
-              <input type="radio" name="lineupMode" value="player" checked>
-              <span>By player</span>
+              <input type="radio" name="lineupRankingSource" value="mine" checked>
+              <span>My rankings</span>
             </label>
             <label>
-              <input type="radio" name="lineupMode" value="rank">
-              <span>By rank</span>
+              <input type="radio" name="lineupRankingSource" value="consensus">
+              <span>Consensus rankings</span>
             </label>
           </fieldset>
         </div>
@@ -149,7 +149,7 @@
       <div class="explanation-grid">
         <article class="info-card">
           <h3>How PPG works</h3>
-          <p>A player uses their position in your rankings. Rank mode uses the position and rank you enter. PPG follows the scoring format selected in Settings, and ranks beyond the dataset use its last available value.</p>
+          <p>A player uses their position in your rankings, or in the bundled consensus rankings if that toggle is on. PPG follows the scoring format selected in Settings, and ranks beyond the dataset use its last available value.</p>
         </article>
         <article class="info-card">
           <h3>How VOR works</h3>
@@ -171,8 +171,19 @@
           <div>
             <p class="section-kicker">Sleeper league</p>
             <h2>Power rankings</h2>
-            <p>Pull a Sleeper league's rosters and score every team using your own player rankings.</p>
+            <p>Pull a Sleeper league's rosters and score every team using your own player rankings, or consensus rankings.</p>
           </div>
+          <fieldset class="segmented-control" id="leagueRankingSourceControl">
+            <legend class="sr-only">Power ranking rankings source</legend>
+            <label>
+              <input type="radio" name="leagueRankingSource" value="mine" checked>
+              <span>My rankings</span>
+            </label>
+            <label>
+              <input type="radio" name="leagueRankingSource" value="consensus">
+              <span>Consensus rankings</span>
+            </label>
+          </fieldset>
         </div>
 
         <div class="league-form">

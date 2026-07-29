@@ -18,9 +18,11 @@ async function readGeneratedDataset() {
     || !parsed.historicalPpg?.ppr
     || !parsed.players?.QB
     || !parsed.excludedPlayerNames?.QB
+    || !parsed.consensusRankings?.ppr?.QB
     || !parsed.sources?.nflverse
     || !parsed.sources?.nflverseRoster
     || !parsed.sources?.sleeper
+    || !parsed.sources?.consensusRankings
   ) {
     throw new Error("The generated calculator dataset has an unsupported schema.");
   }
@@ -36,9 +38,14 @@ export const HISTORICAL_PPG_BY_FORMAT = Object.freeze(GENERATED_DATA.historicalP
 export const HISTORICAL_PPG = Object.freeze(HISTORICAL_PPG_BY_FORMAT[DEFAULT_SCORING_FORMAT]);
 export const PLAYER_DIRECTORY = Object.freeze(GENERATED_DATA.players);
 export const EXCLUDED_PLAYER_NAMES = Object.freeze(GENERATED_DATA.excludedPlayerNames);
+export const CONSENSUS_RANKINGS_BY_FORMAT = Object.freeze(GENERATED_DATA.consensusRankings);
 
 export function historicalPpgFor(scoringFormat = DEFAULT_SCORING_FORMAT) {
   return HISTORICAL_PPG_BY_FORMAT[scoringFormat] ?? HISTORICAL_PPG;
+}
+
+export function consensusRankingsFor(scoringFormat = DEFAULT_SCORING_FORMAT) {
+  return CONSENSUS_RANKINGS_BY_FORMAT[scoringFormat] ?? CONSENSUS_RANKINGS_BY_FORMAT[DEFAULT_SCORING_FORMAT];
 }
 
 export const DATASET_META = Object.freeze({

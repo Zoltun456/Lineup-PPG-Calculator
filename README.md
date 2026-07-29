@@ -20,12 +20,9 @@ Ranked players can be dragged to reorder at any time, and removing someone from 
 
 2. Build a lineup and see it score
 
-Add slots for QB, RB, WR, TE, or FLEX, then fill each one in with either:
+Add slots for QB, RB, WR, TE, or FLEX, then fill each one in by typing a name — it autocompletes from whichever rankings are active.
 
-Player mode — type a name and it autocompletes from your rankings, or
-Rank mode — just type a rank number (e.g. "RB, rank 4") if you don't want to rank every player yourself
-
-Toggle between the two anytime with the switch at the top of the Lineup tab. Slots can be dragged into any order, and you can add or remove as many as you want.
+By default that's your own rankings, but a toggle at the top of the Lineup tab switches the whole pool to a bundled consensus ranking, for anyone who'd rather not rank every player themselves. Slots can be dragged into any order, and you can add or remove as many as you want.
 
 Every slot shows:
 
@@ -38,7 +35,7 @@ Totals for both PPG and VOR are summed at the bottom, so you can compare full li
 
 **Your data, saved automatically**
 
-Everything you do — your rankings, your pool, your current lineup, even which mode (player/rank) you last used — saves automatically to your browser as you go. Close the tab, come back next week, and it's exactly how you left it.
+Everything you do — your rankings, your pool, your current lineup, even which rankings source you last used — saves automatically to your browser as you go. Close the tab, come back next week, and it's exactly how you left it.
 
 This data lives only in your own browser. It's never sent anywhere, isn't tied to an account, and isn't shared with anyone else who opens this same page — every visitor gets their own private, independent copy.
 
@@ -59,7 +56,7 @@ What it isn't is a decision-maker. PPG and VOR here reflect historical scoring b
 
 Open the app.
 Go to the Rankings tab and start ranking players at each position — click or drag them out of the pool.
-Switch to the Lineup tab, set your slots, and start typing in players (or ranks, if you'd rather skip ranking altogether).
+Switch to the Lineup tab, set your slots, and start typing in players — or flip on consensus rankings if you'd rather skip ranking altogether.
 Watch PPG and VOR update as you build.
 
 No sign-up, no setup — just open it and start ranking.

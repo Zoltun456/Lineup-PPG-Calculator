@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "datasetId": "nflverse-sleeper-2021-2025-v2",
-  "generatedAt": "2026-07-29T21:31:27.978Z",
+  "generatedAt": "2026-07-29T22:39:43.018Z",
   "seasons": [
     2021,
     2022,
@@ -103,19 +103,19 @@
         {
           "position": "QB",
           "url": "https://api.sleeper.app/v1/players/nfl?position=QB&active=true",
-          "sha256": "4bd00373554da1e034bb3d9008e4dbff90f9bdbe805755bab679da61c9200570",
+          "sha256": "2d4c6e305585db2a4a056affff3e17fc3fab0fece47649205ed15b958c943958",
           "returnedRecords": 355
         },
         {
           "position": "RB",
           "url": "https://api.sleeper.app/v1/players/nfl?position=RB&active=true",
-          "sha256": "86c6063b88468af78d37c319ca6a602b243367857b3c97e84682d674b52cf507",
+          "sha256": "b4c08435a696772a47a8e10cbfb97c63e8099b77289eeb392e6e0f4cc3d69756",
           "returnedRecords": 741
         },
         {
           "position": "WR",
           "url": "https://api.sleeper.app/v1/players/nfl?position=WR&active=true",
-          "sha256": "47de1a25e4737c10af825969c774145a0e0aa6520098f482d19f218c9c601b14",
+          "sha256": "77f7bf8c46a04d231aab53027c741160ab11a01e42cebada568537166cf236ef",
           "returnedRecords": 1362
         },
         {
@@ -123,6 +123,72 @@
           "url": "https://api.sleeper.app/v1/players/nfl?position=TE&active=true",
           "sha256": "40046ffc4bd8ef60053a319b0af054d0fe74d8b793561c0d4ea9f1b6141cf449",
           "returnedRecords": 647
+        }
+      ]
+    },
+    "consensusRankings": {
+      "name": "User-compiled consensus draft rankings",
+      "usage": "Manually maintained; not fetched over the network. Replace the CSVs in data/sources/consensus-rankings and rerun npm run data:refresh to update.",
+      "files": [
+        {
+          "file": "qb.csv",
+          "position": "QB",
+          "rows": 36,
+          "sha256": "de5621fbe58cbe35ac4af7e915f8338d5f0a40eceec4afc831bf9dadb8432bf1"
+        },
+        {
+          "file": "rb-standard.csv",
+          "position": "RB",
+          "rows": 90,
+          "sha256": "23b7b4e177adb415372e24c491d904e7f6c66d4fb96bc9966a828e46247e200b"
+        },
+        {
+          "file": "wr-standard.csv",
+          "position": "WR",
+          "rows": 128,
+          "sha256": "0d4664c8a095362bd4bf8f02b2431ff1596483aa27ab64ee50268e73ad566da7"
+        },
+        {
+          "file": "te-standard.csv",
+          "position": "TE",
+          "rows": 53,
+          "sha256": "72d4f8b083b184734de62433a4cee044e1fde60bd6f4c93c4081cae6b248f75c"
+        },
+        {
+          "file": "rb-half-ppr.csv",
+          "position": "RB",
+          "rows": 90,
+          "sha256": "6c5ccd45991ec581f13a5f82b96180f756fb13873824114d3a3fab0e299c5d82"
+        },
+        {
+          "file": "wr-half-ppr.csv",
+          "position": "WR",
+          "rows": 128,
+          "sha256": "1c0e1e498f5db3eb240771089fa6d0d6f03e2447e8eb2e52527e43946eedad81"
+        },
+        {
+          "file": "te-half-ppr.csv",
+          "position": "TE",
+          "rows": 53,
+          "sha256": "7a9cb6d7e7a5b78958afd883445afed472f28d440f30171463dd06b55bb4a896"
+        },
+        {
+          "file": "rb-ppr.csv",
+          "position": "RB",
+          "rows": 90,
+          "sha256": "4bfdd407043bd38b9148c19cc47eba4418ee0e470a060bf5ff13d26221e8e421"
+        },
+        {
+          "file": "wr-ppr.csv",
+          "position": "WR",
+          "rows": 128,
+          "sha256": "083ccb29dccca829fe3e944565ac4395f4e39eff7b045e55035eac2a485ed664"
+        },
+        {
+          "file": "te-ppr.csv",
+          "position": "TE",
+          "rows": 53,
+          "sha256": "5de8d8a9daef543694a7279a3222bd43d91a01cbe1bd792aea4e90ac6a46ce62"
         }
       ]
     }
@@ -30249,5 +30315,5 @@
       }
     }
   },
-  "integrity": "sha256-a35386e05370878ac8c4b0b129973c754831ab9065050eab4488e684b9befc52"
+  "integrity": "sha256-e1599fd2031c13f94b2443b1f533d457370e56bb4186b15c63c54e6c13330fde"
 }

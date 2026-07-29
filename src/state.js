@@ -14,7 +14,6 @@ export const LEGACY_KEYS = Object.freeze({
   rankings: ["lineupPpgCalc_rankings_v1", "ffRankings"],
   pool: ["lineupPpgCalc_pool_v1", "ffPool"],
   slots: ["lineupPpgCalc_slots_v1", "ffSlots"],
-  lineupMode: ["lineupPpgCalc_mode_v1", "ffMode"],
 });
 
 const MAX_PLAYERS_PER_POSITION = 500;
@@ -68,7 +67,7 @@ export function createDefaultState() {
     rankings: Object.fromEntries(POSITIONS.map((position) => [position, []])),
     pool: clone(DEFAULT_PLAYER_POOL),
     slots: createDefaultSlots(),
-    lineupMode: "player",
+    lineupRankingSource: "mine",
     settings: {
       teams: 12,
       flexRbShare: 50,
@@ -76,6 +75,7 @@ export function createDefaultState() {
     },
     leagueId: "",
     leagueSortMetric: "ppg",
+    leagueRankingSource: "mine",
   };
 }
 
@@ -89,10 +89,6 @@ export function normalizeSlot(candidate, index = 0) {
   const input = candidate && typeof candidate === "object" ? candidate : {};
   const pos = SLOT_POSITIONS.includes(input.pos) ? input.pos : "QB";
   const flexPos = input.flexPos === "WR" ? "WR" : "RB";
-  const rankNumber = Number(input.rank);
-  const rank = Number.isInteger(rankNumber) && rankNumber > 0 && rankNumber <= 999
-    ? rankNumber
-    : null;
 
   let player = null;
   if (input.player && typeof input.player === "object") {
@@ -119,7 +115,6 @@ export function normalizeSlot(candidate, index = 0) {
       : createSlotId(index),
     pos,
     player,
-    rank,
     flexPos,
   };
 }
@@ -177,7 +172,7 @@ export function normalizeState(candidate, options = {}) {
     rankings,
     pool,
     slots,
-    lineupMode: input.lineupMode === "rank" ? "rank" : "player",
+    lineupRankingSource: input.lineupRankingSource === "consensus" ? "consensus" : "mine",
     settings: {
       teams: Number.isInteger(teams) && teams >= 2 && teams <= 32 ? teams : defaults.settings.teams,
       flexRbShare: Number.isFinite(flexRbShare) && flexRbShare >= 0 && flexRbShare <= 100
@@ -189,6 +184,7 @@ export function normalizeState(candidate, options = {}) {
     },
     leagueId: normalizeLeagueId(input.leagueId),
     leagueSortMetric: input.leagueSortMetric === "vor" ? "vor" : "ppg",
+    leagueRankingSource: input.leagueRankingSource === "consensus" ? "consensus" : "mine",
   };
 }
 
@@ -212,14 +208,23 @@ export function validateImport(candidate) {
   } else if (candidate.slots.length > MAX_SLOTS) {
     errors.push(`A backup cannot contain more than ${MAX_SLOTS} lineup slots.`);
   }
-  if (candidate.lineupMode !== undefined && !["player", "rank"].includes(candidate.lineupMode)) {
-    errors.push("The lineup mode must be player or rank.");
+  if (
+    candidate.lineupRankingSource !== undefined
+    && !["mine", "consensus"].includes(candidate.lineupRankingSource)
+  ) {
+    errors.push("The lineup ranking source must be mine or consensus.");
   }
   if (candidate.leagueId !== undefined && typeof candidate.leagueId !== "string") {
     errors.push("The League ID must be a string.");
   }
   if (candidate.leagueSortMetric !== undefined && !["ppg", "vor"].includes(candidate.leagueSortMetric)) {
     errors.push("The league sort metric must be ppg or vor.");
+  }
+  if (
+    candidate.leagueRankingSource !== undefined
+    && !["mine", "consensus"].includes(candidate.leagueRankingSource)
+  ) {
+    errors.push("The league ranking source must be mine or consensus.");
   }
   if (
     candidate.settings?.scoringFormat !== undefined
@@ -256,12 +261,6 @@ export function validateImport(candidate) {
     if (!SLOT_POSITIONS.includes(slot.pos)) errors.push(`Slot ${index + 1} has an invalid position.`);
     if (slot.flexPos !== undefined && slot.flexPos !== null && !["RB", "WR"].includes(slot.flexPos)) {
       errors.push(`Slot ${index + 1} has an invalid FLEX position.`);
-    }
-    if (slot.rank !== undefined && slot.rank !== null && slot.rank !== "") {
-      const rank = Number(slot.rank);
-      if (!Number.isInteger(rank) || rank < 1 || rank > 999) {
-        errors.push(`Slot ${index + 1} has an invalid rank.`);
-      }
     }
     if (typeof slot.player === "string") {
       if (!slot.player.trim() || slot.player.length > MAX_NAME_LENGTH) {
@@ -313,7 +312,6 @@ export function readLegacyState(storage) {
     rankings: readFirst(LEGACY_KEYS.rankings),
     pool: readFirst(LEGACY_KEYS.pool),
     slots: readFirst(LEGACY_KEYS.slots),
-    lineupMode: readFirst(LEGACY_KEYS.lineupMode),
   };
   const hasLegacyData = Object.values(legacy).some((value) => value !== null);
   return hasLegacyData ? normalizeState(legacy, { backfillDefaults: true }) : null;

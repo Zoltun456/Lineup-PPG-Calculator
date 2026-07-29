@@ -45,26 +45,27 @@ test("default state is complete and internally consistent", () => {
   });
 });
 
-test("export and import round-trip mode, FLEX position, and settings", () => {
+test("export and import round-trip rankings source, FLEX position, and settings", () => {
   const state = createDefaultState();
-  state.lineupMode = "rank";
+  state.lineupRankingSource = "consensus";
+  state.leagueRankingSource = "consensus";
   state.settings = { teams: 10, flexRbShare: 65, scoringFormat: "halfPpr" };
   state.slots = [{
     id: "flex-slot",
     pos: "FLEX",
-    player: null,
-    rank: 8,
+    player: { name: "Solo", position: "WR" },
     flexPos: "WR",
   }];
 
   const validation = validateImport(JSON.parse(exportState(state)));
   assert.equal(validation.ok, true);
-  assert.equal(validation.state.lineupMode, "rank");
+  assert.equal(validation.state.lineupRankingSource, "consensus");
+  assert.equal(validation.state.leagueRankingSource, "consensus");
   assert.equal(validation.state.settings.teams, 10);
   assert.equal(validation.state.settings.flexRbShare, 65);
   assert.equal(validation.state.settings.scoringFormat, "halfPpr");
   assert.equal(validation.state.slots[0].flexPos, "WR");
-  assert.equal(validation.state.slots[0].rank, 8);
+  assert.deepEqual(validation.state.slots[0].player, { name: "Solo", position: "WR" });
 });
 
 test("malformed and injectable imports are rejected without returning state", () => {
@@ -73,9 +74,10 @@ test("malformed and injectable imports are rejected without returning state", ()
     pool: { QB: [], RB: [], WR: [], TE: [] },
     slots: [{
       pos: "\" autofocus onfocus=alert(1) x=\"",
-      rank: "\" autofocus onfocus=alert(1) x=\"",
+      player: { name: "Alpha", position: "\" onclick=alert(1) x=\"" },
     }],
-    lineupMode: "other",
+    lineupRankingSource: "other",
+    leagueRankingSource: "other",
   };
 
   const validation = validateImport(candidate);
@@ -126,16 +128,14 @@ test("legacy browser keys migrate player strings and backfill the default pool",
     lineupPpgCalc_rankings_v1: JSON.stringify({ QB: ["Alpha"], RB: [], WR: [], TE: [] }),
     lineupPpgCalc_pool_v1: JSON.stringify({ QB: [], RB: [], WR: [], TE: [] }),
     lineupPpgCalc_slots_v1: JSON.stringify([
-      { pos: "QB", player: "Alpha", rank: null, flexPos: null },
-      { pos: "FLEX", player: null, rank: "3", flexPos: "WR" },
+      { pos: "QB", player: "Alpha", flexPos: null },
+      { pos: "FLEX", player: null, flexPos: "WR" },
     ]),
-    lineupPpgCalc_mode_v1: JSON.stringify("player"),
   });
 
   const migrated = readLegacyState(storage);
   assert.deepEqual(migrated.slots[0].player, { name: "Alpha", position: "QB" });
   assert.equal(migrated.slots[1].flexPos, "WR");
-  assert.equal(migrated.slots[1].rank, 3);
   assert.ok(migrated.pool.QB.includes("Josh Allen"));
 });
 
@@ -163,9 +163,9 @@ test("corrupt current storage falls back safely to defaults", () => {
 test("saved state can be loaded from the single versioned storage key", () => {
   const storage = new MemoryStorage();
   const state = createDefaultState();
-  state.lineupMode = "rank";
+  state.lineupRankingSource = "consensus";
   saveState(storage, state);
 
   assert.ok(storage.getItem(STORAGE_KEY));
-  assert.equal(loadState(storage).lineupMode, "rank");
+  assert.equal(loadState(storage).lineupRankingSource, "consensus");
 });
