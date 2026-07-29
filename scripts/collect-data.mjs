@@ -5,6 +5,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const POSITIONS = ["QB", "RB", "WR", "TE"];
 const POSITION_DEPTHS = { QB: 36, RB: 72, WR: 84, TE: 30 };
+// Ranking by PPG rewards small samples (a 1-game outing can outscore a full season on a
+// per-game basis), so a finisher needs at least this many games to qualify for a rank.
+const MIN_GAMES_FOR_RANKING = 3;
 const SCORING_FORMATS = {
   standard: {
     label: "Standard",
@@ -340,10 +343,10 @@ export function buildHistoricalDataset(seasonRows, seasons) {
       const depth = POSITION_DEPTHS[position];
       for (const season of seasons) {
         const ranked = seasonRows[season]
-          .filter((player) => player.position === position)
+          .filter((player) => player.position === position && player.games >= MIN_GAMES_FOR_RANKING)
           .sort((left, right) => (
-            right.points[format] - left.points[format]
-            || (right.points[format] / right.games) - (left.points[format] / left.games)
+            (right.points[format] / right.games) - (left.points[format] / left.games)
+            || right.points[format] - left.points[format]
             || left.playerId.localeCompare(right.playerId)
           ))
           .slice(0, depth)
@@ -594,10 +597,10 @@ function datasetMetadata({
     positionDepths: POSITION_DEPTHS,
     methodology: {
       seasonType: "Regular season only",
-      finishRank: "Players are ranked within position and season by total fantasy points for the selected scoring format.",
+      finishRank: `Players are ranked within position and season by points per game (total fantasy points for the selected scoring format, divided by games played), so the PPG value at each rank is non-increasing. A player needs at least ${MIN_GAMES_FOR_RANKING} games in that season to qualify for a rank, so a small sample can't outrank a full season on a per-game basis.`,
       ppg: "A finisher's total fantasy points divided by nflverse games.",
       average: `The PPG values at each positional finish are averaged across ${seasons.length} completed seasons.`,
-      ties: "Ties in total points are resolved by PPG, then nflverse player ID.",
+      ties: "Ties in PPG are resolved by total points, then nflverse player ID.",
       rankCapping: "Ranks beyond the generated positional depth use the last available rank.",
       sleeperPlayerFilter: `Players must be active in Sleeper and not retired. Those on the nflverse ${rosterFile.season} NFL roster need Sleeper search rank 1-${SLEEPER_RELEVANCE_RANK} or depth-chart order 1-${SLEEPER_DEPTH_LIMIT}; free agents with no current team need search rank 1-${FREE_AGENT_RELEVANCE_RANK} and no more than ${FREE_AGENT_MAX_YEARS_EXPERIENCE} years of experience or age ${FREE_AGENT_MAX_AGE}, since Sleeper's active flag can lag behind a real retirement. Stale and retired Sleeper records are excluded.`,
     },

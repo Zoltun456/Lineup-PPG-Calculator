@@ -152,7 +152,7 @@ test("Sleeper selection requires a current roster match or free-agent relevance,
   assert.deepEqual(selected.RB, []);
 });
 
-test("historical builder ranks by total points and averages rank PPG", () => {
+test("historical builder ranks by PPG and averages rank PPG", () => {
   const seasons = [2024, 2025];
   const seasonRows = {};
   for (const season of seasons) {
@@ -182,4 +182,81 @@ test("historical builder ranks by total points and averages rank PPG", () => {
   assert.equal(output.averages.standard.QB[0], 30.5);
   assert.equal(output.averages.ppr.WR[0], 32.5);
   assert.equal(output.averages.halfPpr.TE.length, 30);
+});
+
+test("historical builder ranks a player with fewer games but a higher PPG ahead of a higher-total-points player", () => {
+  const seasons = [2024, 2025];
+  const seasonRows = {};
+  for (const season of seasons) {
+    seasonRows[season] = [];
+    for (const [position, depth] of Object.entries({ QB: 36, RB: 72, WR: 84, TE: 30 })) {
+      for (let index = 0; index < depth; index += 1) {
+        // "Workhorse" out-totals "Efficient" (170 > 160) but plays twice the games,
+        // so Efficient's PPG (20) beats Workhorse's (10) and should rank higher.
+        if (position === "RB" && index === 0) {
+          seasonRows[season].push({
+            playerId: `${season}-RB-workhorse`, name: "Workhorse", position: "RB", team: "TST",
+            games: 17, receptions: 0, points: { standard: 170, halfPpr: 170, ppr: 170 },
+          });
+          continue;
+        }
+        if (position === "RB" && index === 1) {
+          seasonRows[season].push({
+            playerId: `${season}-RB-efficient`, name: "Efficient", position: "RB", team: "TST",
+            games: 8, receptions: 0, points: { standard: 160, halfPpr: 160, ppr: 160 },
+          });
+          continue;
+        }
+        const points = 300 - index;
+        seasonRows[season].push({
+          playerId: `${season}-${position}-${index}`,
+          name: `${position} ${index}`,
+          position,
+          team: "TST",
+          games: 10,
+          receptions: 0,
+          points: { standard: points, halfPpr: points, ppr: points },
+        });
+      }
+    }
+  }
+
+  const output = buildHistoricalDataset(seasonRows, seasons);
+  const rbFinishers = output.details.standard.RB["2024"];
+  const workhorseRank = rbFinishers.findIndex((player) => player.name === "Workhorse");
+  const efficientRank = rbFinishers.findIndex((player) => player.name === "Efficient");
+  assert.ok(efficientRank >= 0 && workhorseRank >= 0);
+  assert.ok(efficientRank < workhorseRank, "higher PPG (Efficient) should outrank higher total points (Workhorse)");
+});
+
+test("historical builder excludes finishers under the games-played minimum despite a huge PPG", () => {
+  const seasons = [2024, 2025];
+  const seasonRows = {};
+  for (const season of seasons) {
+    seasonRows[season] = [];
+    for (const [position, depth] of Object.entries({ QB: 36, RB: 72, WR: 84, TE: 30 })) {
+      for (let index = 0; index < depth; index += 1) {
+        const points = 300 - index;
+        seasonRows[season].push({
+          playerId: `${season}-${position}-${index}`,
+          name: `${position} ${index}`,
+          position,
+          team: "TST",
+          games: 10,
+          receptions: 0,
+          points: { standard: points, halfPpr: points, ppr: points },
+        });
+      }
+    }
+    // A single monster game (1 game, 100 points -> 100 PPG) shouldn't be able to buy a rank.
+    seasonRows[season].push({
+      playerId: `${season}-RB-onegamewonder`, name: "OneGameWonder", position: "RB", team: "TST",
+      games: 1, receptions: 0, points: { standard: 100, halfPpr: 100, ppr: 100 },
+    });
+  }
+
+  const output = buildHistoricalDataset(seasonRows, seasons);
+  const rbFinishers = output.details.standard.RB["2024"];
+  assert.equal(rbFinishers.length, 72);
+  assert.equal(rbFinishers.some((player) => player.name === "OneGameWonder"), false);
 });
