@@ -74,15 +74,3 @@ Watch PPG and VOR update as you build.
 Want a full-league view instead? Head to League Power Rankings and drop in your Sleeper League ID.
 
 No sign-up, no setup — just open it and start ranking.
-
-**Data and development**
-
-The bundled historical PPG data comes from nflverse (season stats and rosters) and Sleeper (player metadata), joined and summarized by [`scripts/collect-data.mjs`](scripts/collect-data.mjs) into the files in [`data/generated/`](data/generated/README.md). The browser never talks to either provider directly — everything it needs ships in those generated files.
-
-To run locally:
-
-```bash
-npm start
-```
-
-Other useful commands: `npm test` runs the unit tests, `npm run check` runs the full validation suite (syntax checks, tests, and data validation), and `npm run data:refresh` regenerates the historical data files from upstream sources. See [`data/README.md`](data/README.md) for details on the data pipeline and consensus rankings.
