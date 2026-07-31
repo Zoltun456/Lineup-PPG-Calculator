@@ -1,4 +1,3 @@
-
 Fantasy Gut Check
 
 A fantasy football tool for ranking your own players and instantly seeing the historical scoring pace and value of any lineup you build — no login, no backend, nothing to install. Open the page and go.
@@ -7,7 +6,7 @@ A fantasy football tool for ranking your own players and instantly seeing the hi
 
 **What it does**
 
-This is a two-part tool: a place to rank players your way, and a lineup builder that turns those rankings into live scoring.
+This is a three-part tool: a place to rank players your way, a lineup builder that turns those rankings into live scoring, and a power-rankings view for your whole Sleeper league.
 
 1. Rank your players
 
@@ -29,20 +28,34 @@ Every slot shows:
 PPG — points per game, based on 5-year historical scoring averages for whatever finish rank a player occupies (e.g. the RB1 number reflects how RB1 finishes have actually scored, on average, over the last 5 years — not a projection of what any specific player will do this season)
 VOR (value over replacement) — how much better that player is than a "replacement level" player at the same position, given your current roster construction
 
-VOR isn't a fixed number — it recalculates live. Every QB/RB/WR/TE slot in your lineup raises that position's replacement baseline by 12 ranks; every FLEX slot raises both RB's and WR's baselines by 6. Add a second FLEX spot, and the RB/WR bar for "replacement level" moves accordingly, and every VOR number updates instantly.
+VOR isn't a fixed number — it recalculates live. Every QB/RB/WR/TE slot in your lineup raises that position's replacement baseline by 12 ranks; every FLEX slot raises the RB and WR baselines according to the FLEX RB/WR split configured in Settings. Add a second FLEX spot, and the "replacement level" bar for RB/WR moves accordingly, and every VOR number updates instantly.
 
 Totals for both PPG and VOR are summed at the bottom, so you can compare full lineups at a glance.
 
+3. League Power Rankings
+
+Enter a Sleeper League ID on the League Power Rankings tab to pull every roster in that league and score each team using your own rankings or the bundled consensus rankings — same toggle pattern as the Lineup tab. Each team shows two numbers: PPG scores that team's best possible starting lineup, while VOR scores the full roster, so it also credits bench depth. Sort the list by either metric. If the league uses slot types this app doesn't model, they're called out and left out of the replacement-rank baseline.
+
+**Settings**
+
+The gear icon in the header opens Settings, where you can tune the model behind the numbers:
+
+Number of teams — how many teams are in your league (2–32), which sets the replacement-rank baseline
+Scoring format — Standard, Half-PPR, or PPR; historical ranks and PPG are recalculated separately for each
+FLEX demand assigned to RB — a slider controlling how a FLEX slot splits its replacement-rank pressure between RB and WR (defaults to a 50/50 split)
+Dataset information — a transparency panel showing exactly what data the bundled historical averages are built from and how to regenerate it locally
+Reset calculator — clears all rankings, custom players, lineup changes, and settings saved on this device
+
 **Your data, saved automatically**
 
-Everything you do — your rankings, your pool, your current lineup, even which rankings source you last used — saves automatically to your browser as you go. Close the tab, come back next week, and it's exactly how you left it.
+Everything you do — your rankings, your pool, your current lineup, your settings, even which rankings source you last used — saves automatically to your browser as you go. Close the tab, come back next week, and it's exactly how you left it.
 
 This data lives only in your own browser. It's never sent anywhere, isn't tied to an account, and isn't shared with anyone else who opens this same page — every visitor gets their own private, independent copy.
 
 Two buttons at the bottom of the Rankings tab give you extra control over that data:
 
-Export data — downloads everything (rankings, pool, lineup) as a .json file, useful as a backup or for moving your setup to a different browser or device
-Import data — loads a previously exported file back in
+Export backup — downloads everything (rankings, pool, lineup) as a .json file, useful as a backup or for moving your setup to a different browser or device
+Import backup — loads a previously exported file back in
 
 **How to actually use this**
 
@@ -58,5 +71,18 @@ Open the app.
 Go to the Rankings tab and start ranking players at each position — click or drag them out of the pool.
 Switch to the Lineup tab, set your slots, and start typing in players — or flip on consensus rankings if you'd rather skip ranking altogether.
 Watch PPG and VOR update as you build.
+Want a full-league view instead? Head to League Power Rankings and drop in your Sleeper League ID.
 
 No sign-up, no setup — just open it and start ranking.
+
+**Data and development**
+
+The bundled historical PPG data comes from nflverse (season stats and rosters) and Sleeper (player metadata), joined and summarized by [`scripts/collect-data.mjs`](scripts/collect-data.mjs) into the files in [`data/generated/`](data/generated/README.md). The browser never talks to either provider directly — everything it needs ships in those generated files.
+
+To run locally:
+
+```bash
+npm start
+```
+
+Other useful commands: `npm test` runs the unit tests, `npm run check` runs the full validation suite (syntax checks, tests, and data validation), and `npm run data:refresh` regenerates the historical data files from upstream sources. See [`data/README.md`](data/README.md) for details on the data pipeline and consensus rankings.
