@@ -356,14 +356,104 @@ input:focus-visible {
 .ranked-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 9px 10px;
+  gap: 8px;
+  padding: 9px 8px;
   border-radius: 8px;
-  transition: background 120ms ease;
+  transition: background 120ms ease, opacity 120ms ease, box-shadow 120ms ease;
 }
 
 .ranked-row:hover {
   background: var(--surface-raised);
+}
+
+.ranked-row.is-dragging {
+  opacity: 0.4;
+}
+
+.ranked-row.drag-placeholder {
+  opacity: 0.16;
+}
+
+.ranked-row.is-drag-shifting {
+  transform: translateY(var(--drag-shift));
+}
+
+.ranked-row.drop-before {
+  box-shadow: inset 0 2px var(--accent-strong);
+}
+
+.ranked-row.drop-after {
+  box-shadow: inset 0 -2px var(--accent-strong);
+}
+
+.drag-handle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:hover {
+  background: var(--surface-raised);
+  color: var(--accent-strong);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-preview {
+  overflow: hidden;
+  border: 1px solid var(--accent-strong);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: 0 20px 40px -20px rgb(0 0 0 / 70%);
+  opacity: 0.98;
+}
+
+body.is-pointer-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.ranked-list.has-active-drag .ranked-row:not(.is-dragging):not(.drag-preview) {
+  transition: transform 150ms ease;
+}
+
+.icon-button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--surface-raised);
+  color: var(--teal);
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.25;
 }
 
 .ranked-index {

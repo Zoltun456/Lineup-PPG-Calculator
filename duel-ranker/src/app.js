@@ -70,6 +70,28 @@ let activePosition = "QB";
 let resolveCompare = null;
 let comparisonsDone = 0;
 let comparisonsTotal = 1;
+let pointerDrag = null;
+
+function moveItem(array, fromIndex, toIndex) {
+  if (
+    !Number.isInteger(fromIndex)
+    || !Number.isInteger(toIndex)
+    || fromIndex < 0
+    || fromIndex >= array.length
+    || toIndex < 0
+    || toIndex >= array.length
+    || fromIndex === toIndex
+  ) return false;
+  const [item] = array.splice(fromIndex, 1);
+  array.splice(toIndex, 0, item);
+  return true;
+}
+
+function reorderRanking(fromIndex, toIndex) {
+  if (!moveItem(rankings[activePosition], fromIndex, toIndex)) return;
+  saveRankings();
+  renderBoard();
+}
 
 function createElement(tagName, attributes = {}, children = []) {
   const element = document.createElement(tagName);
@@ -115,10 +137,35 @@ function renderBoard() {
 
   elements.rankedCount.textContent = String(rankedNames.length);
   elements.rankedList.replaceChildren(...rankedNames.map((name, index) => (
-    createElement("li", { className: "ranked-row" }, [
+    createElement("li", { className: "ranked-row", dataset: { index: String(index) } }, [
+      createElement("button", {
+        type: "button",
+        className: "drag-handle",
+        title: "Drag to reorder",
+        "aria-label": `Drag ${name} to reorder`,
+        dataset: { index: String(index) },
+      }, "⠿"),
       createElement("span", { className: "ranked-index", text: String(index + 1) }),
       createElement("span", { className: "ranked-name", text: name }),
       createElement("span", { className: "ranked-team", text: teamFor(activePosition, name) }),
+      createElement("button", {
+        type: "button",
+        className: "icon-button",
+        text: "↑",
+        title: `Move ${name} up`,
+        "aria-label": `Move ${name} up`,
+        disabled: index === 0,
+        dataset: { action: "move-up", index: String(index) },
+      }),
+      createElement("button", {
+        type: "button",
+        className: "icon-button",
+        text: "↓",
+        title: `Move ${name} down`,
+        "aria-label": `Move ${name} down`,
+        disabled: index === rankedNames.length - 1,
+        dataset: { action: "move-down", index: String(index) },
+      }),
       createElement("button", {
         type: "button",
         className: "remove-button",
@@ -200,13 +247,175 @@ elements.queueList.addEventListener("click", (event) => {
 });
 
 elements.rankedList.addEventListener("click", (event) => {
-  const button = event.target.closest(".remove-button");
-  if (!button) return;
-  const name = button.dataset.name;
-  rankings[activePosition] = rankings[activePosition].filter((candidate) => candidate !== name);
-  saveRankings();
-  renderBoard();
+  const removeButton = event.target.closest(".remove-button");
+  if (removeButton) {
+    const name = removeButton.dataset.name;
+    rankings[activePosition] = rankings[activePosition].filter((candidate) => candidate !== name);
+    saveRankings();
+    renderBoard();
+    return;
+  }
+
+  const moveButton = event.target.closest("[data-action]");
+  if (!moveButton) return;
+  const index = Number(moveButton.dataset.index);
+  if (moveButton.dataset.action === "move-up") reorderRanking(index, index - 1);
+  if (moveButton.dataset.action === "move-down") reorderRanking(index, index + 1);
 });
+
+function stripCloneSemantics(element) {
+  element.removeAttribute("id");
+  element.querySelectorAll("[id]").forEach((child) => child.removeAttribute("id"));
+  element.querySelectorAll("button, input").forEach((control) => {
+    control.tabIndex = -1;
+  });
+}
+
+function activatePointerDrag() {
+  if (!pointerDrag || pointerDrag.active) return;
+  const rect = pointerDrag.source.getBoundingClientRect();
+  const preview = pointerDrag.source.cloneNode(true);
+  stripCloneSemantics(preview);
+  preview.classList.remove("is-dragging", "drop-before", "drop-after");
+  preview.classList.add("drag-preview");
+  preview.setAttribute("aria-hidden", "true");
+  Object.assign(preview.style, {
+    position: "fixed",
+    zIndex: "1000",
+    top: `${rect.top}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    margin: "0",
+    pointerEvents: "none",
+  });
+  document.body.append(preview);
+
+  pointerDrag.active = true;
+  pointerDrag.preview = preview;
+  pointerDrag.distance = rect.height;
+  pointerDrag.source.classList.add("is-dragging", "drag-placeholder");
+  pointerDrag.parent.classList.add("has-active-drag");
+  document.body.classList.add("is-pointer-dragging");
+}
+
+function autoScrollForDrag(clientY) {
+  if (!pointerDrag?.active) return;
+  const scrollParent = pointerDrag.parent;
+  if (scrollParent.scrollHeight <= scrollParent.clientHeight + 1) return;
+  const rect = scrollParent.getBoundingClientRect();
+  const edge = Math.min(42, rect.height / 4);
+  if (clientY < rect.top + edge) scrollParent.scrollTop -= 12;
+  if (clientY > rect.bottom - edge) scrollParent.scrollTop += 12;
+}
+
+function updatePointerDropTarget(clientX, clientY) {
+  if (!pointerDrag?.active) return;
+  const parentRect = pointerDrag.parent.getBoundingClientRect();
+  if (
+    clientX < parentRect.left - 24
+    || clientX > parentRect.right + 24
+    || clientY < parentRect.top - 36
+    || clientY > parentRect.bottom + 36
+  ) return;
+
+  const items = pointerDrag.items;
+  const candidates = items.filter((item) => item !== pointerDrag.source);
+  let targetIndex = candidates.length;
+  for (let index = 0; index < candidates.length; index += 1) {
+    const rect = candidates[index].getBoundingClientRect();
+    const unshiftedMidpoint = rect.top + rect.height / 2
+      - Number.parseFloat(candidates[index].style.getPropertyValue("--drag-shift") || "0");
+    if (clientY < unshiftedMidpoint) {
+      targetIndex = index;
+      break;
+    }
+  }
+  pointerDrag.targetIndex = targetIndex;
+
+  const shiftDistance = pointerDrag.distance;
+  items.forEach((item, index) => {
+    let shift = 0;
+    if (targetIndex < pointerDrag.fromIndex && index >= targetIndex && index < pointerDrag.fromIndex) {
+      shift = shiftDistance;
+    } else if (
+      targetIndex > pointerDrag.fromIndex
+      && index > pointerDrag.fromIndex
+      && index <= targetIndex
+    ) {
+      shift = -shiftDistance;
+    }
+    item.style.setProperty("--drag-shift", `${shift}px`);
+    item.classList.toggle("is-drag-shifting", shift !== 0);
+    item.classList.remove("drop-before", "drop-after");
+  });
+
+  const marker = candidates[targetIndex] ?? candidates.at(-1);
+  if (marker) marker.classList.add(targetIndex < candidates.length ? "drop-before" : "drop-after");
+}
+
+elements.rankedList.addEventListener("pointerdown", (event) => {
+  if (
+    pointerDrag
+    || !event.isPrimary
+    || (event.pointerType === "mouse" && event.button !== 0)
+  ) return;
+  const handle = event.target.closest(".drag-handle");
+  if (!handle) return;
+  const source = handle.closest(".ranked-row");
+  const parent = elements.rankedList;
+  if (!source) return;
+
+  pointerDrag = {
+    pointerId: event.pointerId,
+    handle,
+    source,
+    parent,
+    items: [...parent.querySelectorAll(".ranked-row")],
+    fromIndex: Number(handle.dataset.index),
+    targetIndex: Number(handle.dataset.index),
+    startX: event.clientX,
+    startY: event.clientY,
+    active: false,
+    preview: null,
+  };
+  handle.setPointerCapture?.(event.pointerId);
+});
+
+window.addEventListener("pointermove", (event) => {
+  if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return;
+  const deltaX = event.clientX - pointerDrag.startX;
+  const deltaY = event.clientY - pointerDrag.startY;
+  if (!pointerDrag.active && Math.hypot(deltaX, deltaY) < 5) return;
+
+  event.preventDefault();
+  activatePointerDrag();
+  pointerDrag.preview.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1.02)`;
+  autoScrollForDrag(event.clientY);
+  updatePointerDropTarget(event.clientX, event.clientY);
+}, { passive: false });
+
+function finishPointerReorder(event, { cancelled = false } = {}) {
+  if (!pointerDrag || (event?.pointerId !== undefined && event.pointerId !== pointerDrag.pointerId)) return;
+  const currentDrag = pointerDrag;
+  pointerDrag = null;
+  currentDrag.handle.releasePointerCapture?.(currentDrag.pointerId);
+
+  currentDrag.items.forEach((item) => {
+    item.classList.remove("is-dragging", "drag-placeholder", "is-drag-shifting", "drop-before", "drop-after");
+    item.style.removeProperty("--drag-shift");
+  });
+  currentDrag.parent.classList.remove("has-active-drag");
+  document.body.classList.remove("is-pointer-dragging");
+  currentDrag.preview?.remove();
+
+  if (!cancelled && currentDrag.active && currentDrag.targetIndex !== currentDrag.fromIndex) {
+    reorderRanking(currentDrag.fromIndex, currentDrag.targetIndex);
+  }
+}
+
+window.addEventListener("pointerup", (event) => finishPointerReorder(event));
+window.addEventListener("pointercancel", (event) => finishPointerReorder(event, { cancelled: true }));
 
 elements.clearPositionButton.addEventListener("click", () => {
   if (!rankings[activePosition].length) return;
