@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Rank fantasy football players head-to-head. Your board saves automatically, and new additions are ranked in against it without re-doing old matchups.">
-  <meta name="theme-color" content="#161a2b">
+  <meta name="theme-color" content="#0a0d14">
   <title>Duel Ranker</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./src/app.js"></script>
@@ -13,43 +13,53 @@
   <a class="skip-link" href="#main">Skip to ranker</a>
 
   <header class="hero">
-    <p class="eyebrow">Head to Head</p>
-    <h1>Duel Ranker</h1>
-    <p>Build your board one matchup at a time. It saves as you go — add more players later and they'll only be ranked against your existing board, never from scratch.</p>
+    <div class="hero-glow" aria-hidden="true"></div>
+    <p class="eyebrow">Head to head</p>
+    <h1>Duel <span class="accent-text">Ranker</span></h1>
+    <p>Build your board one matchup at a time. It saves as you go — add more players later and they're only ranked against your existing board, never from scratch.</p>
   </header>
 
   <main id="main" class="page-shell">
 
     <section id="board-screen" class="card">
-      <fieldset class="segmented-control" id="positionControl">
-        <legend class="sr-only">Position</legend>
-        <label>
-          <input type="radio" name="position" value="QB" checked>
-          <span>QB</span>
-        </label>
-        <label>
-          <input type="radio" name="position" value="RB">
-          <span>RB</span>
-        </label>
-        <label>
-          <input type="radio" name="position" value="WR">
-          <span>WR</span>
-        </label>
-        <label>
-          <input type="radio" name="position" value="TE">
-          <span>TE</span>
-        </label>
-      </fieldset>
+      <div class="position-bar">
+        <p class="section-kicker">Position</p>
+        <fieldset class="segmented-control" id="positionControl">
+          <legend class="sr-only">Position</legend>
+          <label>
+            <input type="radio" name="position" value="QB" checked>
+            <span>QB</span>
+          </label>
+          <label>
+            <input type="radio" name="position" value="RB">
+            <span>RB</span>
+          </label>
+          <label>
+            <input type="radio" name="position" value="WR">
+            <span>WR</span>
+          </label>
+          <label>
+            <input type="radio" name="position" value="TE">
+            <span>TE</span>
+          </label>
+        </fieldset>
+      </div>
 
       <div class="board-layout">
-        <div class="board-ranked">
-          <h2>Your ranking (<span id="rankedCount">0</span>)</h2>
+        <div class="board-panel board-ranked">
+          <div class="panel-head">
+            <p class="section-kicker">Your board</p>
+            <h2>Ranking (<span id="rankedCount">0</span>)</h2>
+          </div>
           <ol id="rankedList" class="ranked-list" role="list"></ol>
           <button class="button button-quiet" id="clearPositionButton" type="button" disabled>Clear this position</button>
         </div>
 
-        <div class="board-add">
-          <h2>Add players</h2>
+        <div class="board-panel board-add">
+          <div class="panel-head">
+            <p class="section-kicker">Add players</p>
+            <h2>Search the pool</h2>
+          </div>
           <label class="field">
             <span>Search players</span>
             <input type="text" id="poolSearch" placeholder="Search by name or team" autocomplete="off">
@@ -59,7 +69,7 @@
           <h3>Queued (<span id="queueCount">0</span>)</h3>
           <ul id="queueList" class="pick-list pick-list-selected" role="list"></ul>
           <p class="queue-estimate" id="queueEstimate"></p>
-          <button class="button button-wide" id="rankAdditionsButton" type="button" disabled>Rank additions against your board</button>
+          <button class="button button-primary button-wide" id="rankAdditionsButton" type="button" disabled>Rank additions against your board</button>
         </div>
       </div>
 
@@ -68,7 +78,7 @@
       </div>
     </section>
 
-    <section id="duel-screen" class="card" hidden>
+    <section id="duel-screen" class="card duel-card" hidden>
       <p class="section-kicker" id="duelPositionLabel">Ranking additions</p>
       <h2>Which player would you rather have?</h2>
       <div class="progress-wrap">
@@ -80,7 +90,7 @@
           <p class="card-caption" id="candidateLabel">New addition</p>
           <button type="button" class="name-card" id="cardCandidate"></button>
         </div>
-        <div class="vs">VS</div>
+        <div class="vs"><span>VS</span></div>
         <div class="duel-column">
           <p class="card-caption" id="incumbentRankLabel">Currently ranked</p>
           <button type="button" class="name-card" id="cardIncumbent"></button>

@@ -74,3 +74,11 @@ Watch PPG and VOR update as you build.
 Want a full-league view instead? Head to League Power Rankings and drop in your Sleeper League ID.
 
 No sign-up, no setup — just open it and start ranking.
+
+**A separate tool: Duel Ranker**
+
+Dragging a full position into order gets tedious past the top 20 or so. [Duel Ranker](https://zoltun456.github.io/Lineup-PPG-Calculator/duel-ranker/) is a standalone companion app for that — it pulls from the same player pool as the calculator, but instead of dragging players into place, you settle your board through head-to-head matchups: pick who you'd rather have, one pair at a time, until the whole group is ordered.
+
+Your board saves automatically per position. Add more players later and only the new ones get compared — against the board you've already settled, never from scratch — so a big board never means redoing pairs you've already decided. Export your finished rankings to an Excel file whenever you want a copy.
+
+It's a fully separate tool with its own page and its own saved data — nothing you do there touches your rankings in the calculator above, or vice versa.
