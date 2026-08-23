@@ -183,21 +183,6 @@ select:focus-visible,
   line-height: 1.5;
 }
 
-.hero-link {
-  margin-top: 14px !important;
-  font-size: 0.8rem !important;
-}
-
-.hero-link a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.hero-link a:hover {
-  color: white;
-}
-
 .tabs {
   position: relative;
   z-index: 2;
@@ -420,14 +405,6 @@ select:focus-visible,
   font-size: 0.67rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.duel-import-button {
-  width: calc(100% - 26px);
-  min-height: 34px;
-  margin: 10px 13px 0;
-  padding: 7px 10px;
-  font-size: 0.72rem;
 }
 
 .rank-list,

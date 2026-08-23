@@ -1,0 +1,342 @@
+import { PLAYER_POOL, POSITIONS } from "./data.js";
+import { buildXlsxBlob } from "./xlsx-writer.js";
+
+const STORAGE_KEY = "duelRankerApp_rankings_v1";
+const CANCELLED = Symbol("cancelled");
+
+const elements = {
+  boardScreen: document.querySelector("#board-screen"),
+  duelScreen: document.querySelector("#duel-screen"),
+  positionControl: document.querySelector("#positionControl"),
+  rankedCount: document.querySelector("#rankedCount"),
+  rankedList: document.querySelector("#rankedList"),
+  clearPositionButton: document.querySelector("#clearPositionButton"),
+  poolSearch: document.querySelector("#poolSearch"),
+  poolList: document.querySelector("#poolList"),
+  queueList: document.querySelector("#queueList"),
+  queueCount: document.querySelector("#queueCount"),
+  queueEstimate: document.querySelector("#queueEstimate"),
+  rankAdditionsButton: document.querySelector("#rankAdditionsButton"),
+  exportButton: document.querySelector("#exportButton"),
+  duelPositionLabel: document.querySelector("#duelPositionLabel"),
+  candidateLabel: document.querySelector("#candidateLabel"),
+  progressFill: document.querySelector("#progressFill"),
+  progressLabel: document.querySelector("#progressLabel"),
+  cardCandidate: document.querySelector("#cardCandidate"),
+  cardIncumbent: document.querySelector("#cardIncumbent"),
+  incumbentRankLabel: document.querySelector("#incumbentRankLabel"),
+  tieButton: document.querySelector("#tieButton"),
+  cancelDuelButton: document.querySelector("#cancelDuelButton"),
+};
+
+const teamByPositionAndName = Object.fromEntries(POSITIONS.map((position) => [
+  position,
+  new Map(PLAYER_POOL[position].map((player) => [player.name, player.team])),
+]));
+
+function teamFor(position, name) {
+  return teamByPositionAndName[position]?.get(name) ?? "";
+}
+
+function loadRankings() {
+  const fallback = Object.fromEntries(POSITIONS.map((position) => [position, []]));
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    for (const position of POSITIONS) {
+      const list = parsed?.[position];
+      if (Array.isArray(list) && list.every((name) => typeof name === "string")) {
+        fallback[position] = list.slice(0, 500);
+      }
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveRankings() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rankings));
+  } catch {
+    // Private browsing or full storage — export still works from memory.
+  }
+}
+
+const rankings = loadRankings();
+const queues = Object.fromEntries(POSITIONS.map((position) => [position, new Set()]));
+let activePosition = "QB";
+let resolveCompare = null;
+let comparisonsDone = 0;
+let comparisonsTotal = 1;
+
+function createElement(tagName, attributes = {}, children = []) {
+  const element = document.createElement(tagName);
+  for (const [name, value] of Object.entries(attributes)) {
+    if (value === null || value === undefined || value === false) continue;
+    if (name === "className") element.className = value;
+    else if (name === "text") element.textContent = value;
+    else if (name === "dataset") Object.assign(element.dataset, value);
+    else if (name === "disabled") element.disabled = Boolean(value);
+    else if (name in element && !name.startsWith("aria")) element[name] = value;
+    else element.setAttribute(name, String(value));
+  }
+  for (const child of Array.isArray(children) ? children : [children]) {
+    if (child === null || child === undefined) continue;
+    element.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return element;
+}
+
+function showScreen(screen) {
+  elements.boardScreen.hidden = screen !== elements.boardScreen;
+  elements.duelScreen.hidden = screen !== elements.duelScreen;
+}
+
+function playerLabel(position, name) {
+  const team = teamFor(position, name);
+  return team ? `${name} · ${team}` : name;
+}
+
+function estimateComparisonsFor(startLength, additionCount) {
+  let length = startLength;
+  let total = 0;
+  for (let i = 0; i < additionCount; i++) {
+    total += length > 0 ? Math.ceil(Math.log2(length + 1)) : 0;
+    length++;
+  }
+  return Math.max(1, total);
+}
+
+function renderBoard() {
+  const rankedNames = rankings[activePosition];
+  const queue = queues[activePosition];
+
+  elements.rankedCount.textContent = String(rankedNames.length);
+  elements.rankedList.replaceChildren(...rankedNames.map((name, index) => (
+    createElement("li", { className: "ranked-row" }, [
+      createElement("span", { className: "ranked-index", text: String(index + 1) }),
+      createElement("span", { className: "ranked-name", text: name }),
+      createElement("span", { className: "ranked-team", text: teamFor(activePosition, name) }),
+      createElement("button", {
+        type: "button",
+        className: "remove-button",
+        text: "×",
+        title: `Remove ${name} from your ${activePosition} ranking`,
+        dataset: { name },
+      }),
+    ])
+  )));
+
+  const rankedKeys = new Set(rankedNames.map((name) => name.toLocaleLowerCase()));
+  const query = elements.poolSearch.value.trim().toLocaleLowerCase();
+  const pool = PLAYER_POOL[activePosition].filter((player) => (
+    !rankedKeys.has(player.name.toLocaleLowerCase()) && !queue.has(player.name)
+  ));
+  const filteredPool = query
+    ? pool.filter((player) => player.name.toLocaleLowerCase().includes(query))
+    : pool;
+
+  elements.poolList.replaceChildren(...filteredPool.map((player) => (
+    createElement("li", {}, [
+      createElement("button", {
+        type: "button",
+        className: "pick-item",
+        dataset: { name: player.name },
+        text: playerLabel(activePosition, player.name),
+      }),
+    ])
+  )));
+
+  const queuedNames = [...queue];
+  elements.queueList.replaceChildren(...queuedNames.map((name) => (
+    createElement("li", {}, [
+      createElement("button", {
+        type: "button",
+        className: "pick-item pick-item-selected",
+        dataset: { name },
+        text: playerLabel(activePosition, name),
+      }),
+    ])
+  )));
+
+  elements.queueCount.textContent = String(queuedNames.length);
+  elements.queueEstimate.textContent = queuedNames.length
+    ? `About ${estimateComparisonsFor(rankedNames.length, queuedNames.length)} matchups to rank ${queuedNames.length === 1 ? "this addition" : "these additions"} against your board.`
+    : "Add players above, then rank them in against your current board.";
+  elements.rankAdditionsButton.disabled = queuedNames.length === 0;
+  elements.rankAdditionsButton.textContent = queuedNames.length
+    ? `Rank ${queuedNames.length} addition${queuedNames.length === 1 ? "" : "s"} against your board`
+    : "Rank additions against your board";
+  elements.clearPositionButton.disabled = rankedNames.length === 0;
+
+  const totalRanked = POSITIONS.reduce((sum, position) => sum + rankings[position].length, 0);
+  elements.exportButton.disabled = totalRanked === 0;
+  elements.exportButton.textContent = `Export to Excel (${totalRanked} ranked)`;
+}
+
+elements.positionControl.addEventListener("change", (event) => {
+  if (event.target.name !== "position") return;
+  activePosition = event.target.value;
+  elements.poolSearch.value = "";
+  renderBoard();
+});
+
+elements.poolSearch.addEventListener("input", renderBoard);
+
+elements.poolList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-name]");
+  if (!button) return;
+  queues[activePosition].add(button.dataset.name);
+  renderBoard();
+});
+
+elements.queueList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-name]");
+  if (!button) return;
+  queues[activePosition].delete(button.dataset.name);
+  renderBoard();
+});
+
+elements.rankedList.addEventListener("click", (event) => {
+  const button = event.target.closest(".remove-button");
+  if (!button) return;
+  const name = button.dataset.name;
+  rankings[activePosition] = rankings[activePosition].filter((candidate) => candidate !== name);
+  saveRankings();
+  renderBoard();
+});
+
+elements.clearPositionButton.addEventListener("click", () => {
+  if (!rankings[activePosition].length) return;
+  if (!confirm(`Clear your entire ${activePosition} ranking? This can't be undone.`)) return;
+  rankings[activePosition] = [];
+  saveRankings();
+  renderBoard();
+});
+
+function updateProgress() {
+  const pct = comparisonsTotal ? Math.min(100, Math.round((comparisonsDone / comparisonsTotal) * 100)) : 0;
+  elements.progressFill.style.width = `${pct}%`;
+  elements.progressLabel.textContent = `${pct}%`;
+}
+
+function askUser(candidate, incumbent, incumbentRank) {
+  return new Promise((resolve) => {
+    elements.cardCandidate.textContent = candidate;
+    elements.cardIncumbent.textContent = incumbent;
+    elements.incumbentRankLabel.textContent = `Currently #${incumbentRank}`;
+    elements.cardCandidate.classList.remove("chosen", "rejected");
+    elements.cardIncumbent.classList.remove("chosen", "rejected");
+    resolveCompare = resolve;
+  });
+}
+
+elements.cardCandidate.addEventListener("click", () => {
+  if (!resolveCompare) return;
+  elements.cardCandidate.classList.add("chosen");
+  elements.cardIncumbent.classList.add("rejected");
+  const resolve = resolveCompare;
+  resolveCompare = null;
+  setTimeout(() => resolve(-1), 110);
+});
+
+elements.cardIncumbent.addEventListener("click", () => {
+  if (!resolveCompare) return;
+  elements.cardIncumbent.classList.add("chosen");
+  elements.cardCandidate.classList.add("rejected");
+  const resolve = resolveCompare;
+  resolveCompare = null;
+  setTimeout(() => resolve(1), 110);
+});
+
+elements.tieButton.addEventListener("click", () => {
+  if (!resolveCompare) return;
+  const resolve = resolveCompare;
+  resolveCompare = null;
+  resolve(0);
+});
+
+elements.cancelDuelButton.addEventListener("click", () => {
+  if (resolveCompare) {
+    const resolve = resolveCompare;
+    resolveCompare = null;
+    resolve(CANCELLED);
+  }
+});
+
+// Binary-inserts `candidate` into the already-sorted `list` (best first),
+// comparing it only against the players already in place — previously
+// settled matchups are never revisited.
+async function insertCandidate(list, candidate, position) {
+  let lo = 0;
+  let hi = list.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    const outcome = await askUser(candidate, list[mid], mid + 1);
+    if (outcome === CANCELLED) throw CANCELLED;
+    comparisonsDone++;
+    updateProgress();
+    if (outcome < 0) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+  list.splice(lo, 0, candidate);
+}
+
+async function rankQueuedAdditions() {
+  const position = activePosition;
+  const queue = [...queues[position]];
+  if (!queue.length) return;
+
+  comparisonsDone = 0;
+  comparisonsTotal = estimateComparisonsFor(rankings[position].length, queue.length);
+  elements.duelPositionLabel.textContent = `Ranking ${position} additions`;
+  updateProgress();
+  showScreen(elements.duelScreen);
+
+  try {
+    for (const candidate of queue) {
+      await insertCandidate(rankings[position], candidate, position);
+      queues[position].delete(candidate);
+      saveRankings();
+    }
+  } catch (error) {
+    if (error !== CANCELLED) throw error;
+  }
+
+  showScreen(elements.boardScreen);
+  renderBoard();
+}
+
+elements.rankAdditionsButton.addEventListener("click", rankQueuedAdditions);
+
+function exportRankings() {
+  const sheets = POSITIONS
+    .filter((position) => rankings[position].length)
+    .map((position) => ({
+      name: position,
+      rows: [
+        ["Rank", "Player", "Team"],
+        ...rankings[position].map((name, index) => [index + 1, name, teamFor(position, name)]),
+      ],
+    }));
+  if (!sheets.length) return;
+
+  const blob = buildXlsxBlob(sheets);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "duel-ranker-rankings.xlsx";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+elements.exportButton.addEventListener("click", exportRankings);
+
+renderBoard();

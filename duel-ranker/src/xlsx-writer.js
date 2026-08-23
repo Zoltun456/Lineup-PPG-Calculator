@@ -49,10 +49,6 @@ class ByteWriter {
     ]));
   }
 
-  ascii(text) {
-    return this.bytes(Uint8Array.from(text, (character) => character.codePointAt(0)));
-  }
-
   toUint8Array() {
     const output = new Uint8Array(this.length);
     let offset = 0;

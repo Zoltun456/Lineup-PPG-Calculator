@@ -21,7 +21,6 @@ import {
   validateImport,
 } from "./state.js";
 import { computeLeaguePowerRankings, fetchLeagueRosterData } from "./sleeper.js";
-import { DUEL_RANKINGS_STORAGE_KEY, loadDuelRankings } from "./duel-rankings.js";
 
 const MAX_UNDO_STEPS = 30;
 const elements = {
@@ -80,7 +79,6 @@ let activeViewTransition = null;
 let statusTimer = null;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const searchTerms = Object.fromEntries(POSITIONS.map((position) => [position, ""]));
-let duelRankings = loadDuelRankings();
 const playerMetadata = new Map(POSITIONS.flatMap((position) => (
   PLAYER_DIRECTORY[position].map((player) => [
     `${position}\u0000${player.name.toLocaleLowerCase()}`,
@@ -292,17 +290,6 @@ function renderRankings() {
       createElement("small", { text: `${state.rankings[position].length} ranked` }),
     ]);
 
-    const duelOrder = duelRankings[position];
-    const duelImportButton = duelOrder?.length
-      ? createElement("button", {
-        type: "button",
-        className: "button button-quiet duel-import-button",
-        text: `Use Duel Ranker order (${duelOrder.length})`,
-        title: `Reorder ${position} rankings using your saved Duel Ranker results`,
-        dataset: { action: "duel-import", position },
-      })
-      : null;
-
     const rankedLabel = createElement("p", { className: "list-label", text: "Ranked players" });
     const rankList = createElement("div", {
       className: "rank-list",
@@ -436,7 +423,7 @@ function renderRankings() {
       "aria-label": `Add a new ${position} player`,
     });
     const tools = createElement("div", { className: "pool-tools" }, [searchInput, addInput, addButton]);
-    column.append(heading, ...(duelImportButton ? [duelImportButton] : []), rankedLabel, rankList, poolLabel, poolList, tools);
+    column.append(heading, rankedLabel, rankList, poolLabel, poolList, tools);
     return column;
   });
 
@@ -863,16 +850,6 @@ function addPoolPlayerToRankings(position, index, targetIndex = null) {
   });
 }
 
-function applyDuelRanking(position) {
-  const duelOrder = duelRankings[position];
-  if (!duelOrder?.length) return;
-  commit(`Applied your Duel Ranker order to ${position} rankings.`, (draft) => {
-    const duelKeys = new Set(duelOrder.map((name) => name.toLocaleLowerCase()));
-    const remainder = draft.rankings[position].filter((name) => !duelKeys.has(name.toLocaleLowerCase()));
-    draft.rankings[position] = [...duelOrder, ...remainder];
-  });
-}
-
 function addCustomPlayer(position) {
   const input = document.querySelector(`#add-player-${position}`);
   const name = input?.value.trim();
@@ -1150,12 +1127,6 @@ window.addEventListener("hashchange", () => {
   if (["rankings", "lineup", "league"].includes(requestedTab)) setActiveTab(requestedTab);
 });
 
-window.addEventListener("storage", (event) => {
-  if (event.key !== DUEL_RANKINGS_STORAGE_KEY) return;
-  duelRankings = loadDuelRankings();
-  renderRankings();
-});
-
 elements.settingsButton.addEventListener("click", () => {
   renderSettings();
   elements.settingsDialog.showModal();
@@ -1214,7 +1185,6 @@ elements.rankGrid.addEventListener("click", (event) => {
   if (action === "rank-up") reorderRankedPlayer(position, index, index - 1);
   if (action === "rank-down") reorderRankedPlayer(position, index, index + 1);
   if (action === "custom-add") addCustomPlayer(position);
-  if (action === "duel-import") applyDuelRanking(position);
 });
 
 elements.rankGrid.addEventListener("input", (event) => {
